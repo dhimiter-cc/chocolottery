@@ -46,7 +46,22 @@ $presetName = get_cookie('player_name') ?? '';
 
   <div class="game-grid">
 
-    <!-- Stage panel (full width on top) -->
+    <!-- Snacks: left column on desktop -->
+    <section class="panel snacks-panel">
+      <div class="section-head">
+        <h2>Snack votes</h2>
+        <span class="count" id="snacks-count">0</span>
+      </div>
+      <p class="muted">Pitch ideas. Upvote favourites. Highest-voted wins. Tie or no votes? Random. (Dwight, no beets.)</p>
+      <form id="snack-form" class="snack-form">
+        <input type="text" id="snack-input" maxlength="80" placeholder="Tim Tams, Speculoos, that weird Schrute beet thing…" autocomplete="off">
+        <button type="submit" class="btn">Add</button>
+      </form>
+      <div id="snacks-list" class="snacks-list"></div>
+      <p id="snack-error" class="error"></p>
+    </section>
+
+    <!-- Stage: right column on desktop, top on mobile -->
     <section class="panel stage-panel">
       <div class="phase-bar">
         <div class="phase-info">
@@ -60,10 +75,11 @@ $presetName = get_cookie('player_name') ?? '';
         <div id="straws" class="straws"></div>
         <div class="cup"></div>
 
-        <!-- Lobby/idle overlay -->
-        <div id="lobby-overlay" class="stage-overlay">
-          <div class="overlay-title">Ready when you are</div>
-          <div class="overlay-sub">Straws will appear when the round starts</div>
+        <!-- Lobby overlay: shows people gathered in the stage -->
+        <div id="lobby-overlay" class="stage-overlay lobby">
+          <div class="overlay-headline">In the room</div>
+          <div id="lobby-players" class="lobby-players"></div>
+          <div id="lobby-empty" class="overlay-sub" hidden>Waiting for someone — anyone — to show up.</div>
         </div>
 
         <!-- Winner overlay -->
@@ -81,31 +97,6 @@ $presetName = get_cookie('player_name') ?? '';
       </div>
 
       <p id="action-error" class="error" style="margin: 10px 0 0;"></p>
-    </section>
-
-    <!-- Players panel -->
-    <section class="panel players-panel">
-      <div class="section-head">
-        <h2>Players</h2>
-        <span class="count" id="players-count">0 online</span>
-      </div>
-      <p class="muted">Stanley would not approve.</p>
-      <div id="players-list" class="players-list"></div>
-    </section>
-
-    <!-- Snacks panel -->
-    <section class="panel snacks-panel">
-      <div class="section-head">
-        <h2>Snack votes</h2>
-        <span class="count" id="snacks-count">0</span>
-      </div>
-      <p class="muted">Pitch ideas. Upvote favourites. Highest-voted wins. Tie or no votes? Random. (Dwight, no beets.)</p>
-      <form id="snack-form" class="snack-form">
-        <input type="text" id="snack-input" maxlength="80" placeholder="Tim Tams, Speculoos, that weird Schrute beet thing…" autocomplete="off">
-        <button type="submit" class="btn">Add</button>
-      </form>
-      <div id="snacks-list" class="snacks-list"></div>
-      <p id="snack-error" class="error"></p>
     </section>
 
   </div>

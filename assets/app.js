@@ -10,8 +10,8 @@
   const $ = (id) => document.getElementById(id);
 
   // Always-visible elements
-  const playersList   = $('players-list');
-  const playersCount  = $('players-count');
+  const lobbyPlayers  = $('lobby-players');
+  const lobbyEmpty    = $('lobby-empty');
   const snackForm     = $('snack-form');
   const snackInput    = $('snack-input');
   const snacksList    = $('snacks-list');
@@ -45,6 +45,19 @@
   let confettiFired = false;
   let prevPickedSet = new Set();
   let currentPhase = null;
+  let prevLobbyTokens = new Set();
+
+  // === Avatar helpers ===
+  function avatarColor(name) {
+    let h = 0;
+    for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
+    const hue = ((h % 360) + 360) % 360;
+    return `linear-gradient(160deg, hsl(${hue} 70% 60%) 0%, hsl(${(hue + 30) % 360} 60% 38%) 100%)`;
+  }
+  function avatarInitial(name) {
+    const trimmed = (name || '?').trim();
+    return trimmed ? trimmed.charAt(0).toUpperCase() : '?';
+  }
 
   // === Toast ===
   function showToast(msg) {
@@ -153,27 +166,40 @@
     } catch {}
   }
 
-  // === Render: players ===
-  function renderPlayerList(players, opts) {
-    opts = opts || {};
-    playersList.innerHTML = '';
+  // === Render: lobby avatars (inside the stage during lobby) ===
+  function renderLobbyPlayers(players) {
+    const tokens = new Set(players.map(p => p.token));
+    lobbyPlayers.innerHTML = '';
+
+    if (players.length === 0) {
+      lobbyEmpty.hidden = false;
+    } else {
+      lobbyEmpty.hidden = true;
+    }
+
     players.forEach(p => {
-      const tag = document.createElement('div');
-      tag.className = 'player-tag';
-      if (!p.online) tag.classList.add('offline');
-      if (p.is_me) tag.classList.add('me');
-      if (p.picked) tag.classList.add('picked');
-      if (opts.winnerToken) {
-        if (p.token === opts.winnerToken) tag.classList.add('winner-tag');
-        else tag.classList.add('loser');
-      }
-      const dot = document.createElement('span');
-      dot.className = 'status-dot';
-      dot.title = p.online ? 'Online' : 'Offline (probably in a meeting)';
-      tag.appendChild(dot);
-      tag.appendChild(document.createTextNode(p.name + (p.is_me ? ' (you)' : '')));
-      playersList.appendChild(tag);
+      const wrap = document.createElement('div');
+      wrap.className = 'lobby-player';
+      if (!p.online) wrap.classList.add('offline');
+      if (p.is_me) wrap.classList.add('me');
+      if (!prevLobbyTokens.has(p.token) && prevLobbyTokens.size > 0) wrap.classList.add('new');
+      wrap.title = p.name + (p.online ? '' : ' (offline)');
+
+      const av = document.createElement('div');
+      av.className = 'avatar';
+      av.style.background = avatarColor(p.name);
+      av.textContent = avatarInitial(p.name);
+
+      const nm = document.createElement('div');
+      nm.className = 'name';
+      nm.textContent = p.is_me ? p.name + ' (you)' : p.name;
+
+      wrap.appendChild(av);
+      wrap.appendChild(nm);
+      lobbyPlayers.appendChild(wrap);
     });
+
+    prevLobbyTokens = tokens;
   }
 
   // === Render: snacks ===
@@ -250,19 +276,11 @@
     lastState = state;
     setPhase(state.state);
 
-    // === Players (always visible) ===
-    const winnerToken = (state.state === 'reveal' || state.state === 'done') ? state.winner_token : null;
-    renderPlayerList(state.players, { winnerToken });
-    const onlineCount = state.players.filter(p => p.online).length;
-    if (state.state === 'lobby') {
-      playersCount.textContent = onlineCount + ' online';
-    } else {
-      playersCount.textContent = state.players.length + ' in round';
-    }
-
     // === Snacks (always visible, voting always live) ===
     renderSnacks(state.suggestions, true);
     snacksCount.textContent = state.suggestions ? state.suggestions.length : 0;
+
+    const onlineCount = state.players.filter(p => p.online).length;
 
     // === Phase-specific UI ===
     if (state.state === 'lobby') {
@@ -274,12 +292,15 @@
       strawsEl.innerHTML = '';
       prizeCard.hidden = true;
 
+      // Show players IN the stage
+      renderLobbyPlayers(state.players);
+
       actionBtn.style.display = '';
       actionBtn.textContent = onlineCount < 2 ? 'Need 2+ players' : `Start the lottery (${onlineCount})`;
       actionBtn.disabled = onlineCount < 2;
 
       phaseDetail.textContent = onlineCount < 2
-        ? 'Waiting for at least one more brave soul…'
+        ? `${onlineCount} here. Send the link to your colleagues.`
         : `${onlineCount} ready. Press Start when everyone's in.`;
 
     } else if (state.state === 'picking') {
