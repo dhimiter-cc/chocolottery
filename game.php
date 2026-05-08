@@ -1,0 +1,116 @@
+<?php
+require_once __DIR__ . '/config.php';
+$code = strtoupper(trim($_GET['code'] ?? ''));
+if (!$code) { header('Location: index.php'); exit; }
+$game = load_game($code);
+if (!$game) { header('Location: index.php?err=notfound'); exit; }
+$myToken = get_cookie('player_token');
+$alreadyIn = $myToken && isset($game['players'][$myToken]);
+$presetName = get_cookie('player_name') ?? '';
+?>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title><?= htmlspecialchars($code) ?> — Chocolate Lottery</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="assets/style.css">
+</head>
+<body class="page-game" data-code="<?= htmlspecialchars($code) ?>" data-already-joined="<?= $alreadyIn ? '1' : '0' ?>">
+
+<div id="name-modal" class="modal" <?= $alreadyIn ? 'hidden' : '' ?>>
+  <div class="modal-card">
+    <h2>Join the round</h2>
+    <p class="muted">Game <span class="stamp"><?= htmlspecialchars($code) ?></span></p>
+    <form id="name-form" style="margin-top:18px;">
+      <label>Display name
+        <input type="text" id="modal-name" maxlength="30" required value="<?= htmlspecialchars($presetName) ?>" placeholder="your name">
+      </label>
+      <button type="submit" class="btn btn-primary">Join</button>
+      <p id="modal-error" class="error"></p>
+    </form>
+  </div>
+</div>
+
+<div class="parchment game-room">
+  <header class="game-head">
+    <div>
+      <h1 class="title small">chocolate.lottery</h1>
+      <p class="muted">Game <span id="share-code" class="stamp" title="Click to copy share link"><?= htmlspecialchars($code) ?></span></p>
+    </div>
+    <div class="head-actions">
+      <a href="leaderboard.php" class="btn btn-ghost">Leaderboard</a>
+      <a href="index.php" class="btn btn-ghost">Home</a>
+    </div>
+  </header>
+
+  <div class="game-grid">
+
+    <!-- Stage panel (full width on top) -->
+    <section class="panel stage-panel">
+      <div class="phase-bar">
+        <div class="phase-info">
+          <span id="phase-pill" class="phase-pill">Lobby</span>
+          <span id="phase-detail" class="phase-detail">Waiting for the brave to gather…</span>
+        </div>
+        <button id="action-btn" class="btn btn-primary big">Start the lottery</button>
+      </div>
+
+      <div id="cup-stage" class="cup-stage" data-phase="lobby">
+        <div id="straws" class="straws"></div>
+        <div class="cup"></div>
+
+        <!-- Lobby/idle overlay -->
+        <div id="lobby-overlay" class="stage-overlay">
+          <div class="overlay-title">Ready when you are</div>
+          <div class="overlay-sub">Straws will appear when the round starts</div>
+        </div>
+
+        <!-- Winner overlay -->
+        <div id="winner-overlay" class="stage-overlay" hidden>
+          <div class="overlay-headline">🍫 Longest straw belongs to</div>
+          <div id="winner-name" class="winner-name"></div>
+          <div id="reveal-message" class="overlay-sub"></div>
+        </div>
+      </div>
+
+      <div id="prize-card" class="prize-card" hidden>
+        <div class="prize-label">🍫 Prize snack</div>
+        <div class="prize-text" id="prize-text"></div>
+        <div class="prize-meta" id="prize-meta"></div>
+      </div>
+
+      <p id="action-error" class="error" style="margin: 10px 0 0;"></p>
+    </section>
+
+    <!-- Players panel -->
+    <section class="panel players-panel">
+      <div class="section-head">
+        <h2>Players</h2>
+        <span class="count" id="players-count">0 online</span>
+      </div>
+      <p class="muted">Stanley would not approve.</p>
+      <div id="players-list" class="players-list"></div>
+    </section>
+
+    <!-- Snacks panel -->
+    <section class="panel snacks-panel">
+      <div class="section-head">
+        <h2>Snack votes</h2>
+        <span class="count" id="snacks-count">0</span>
+      </div>
+      <p class="muted">Pitch ideas. Upvote favourites. Highest-voted wins. Tie or no votes? Random. (Dwight, no beets.)</p>
+      <form id="snack-form" class="snack-form">
+        <input type="text" id="snack-input" maxlength="80" placeholder="Tim Tams, Speculoos, that weird Schrute beet thing…" autocomplete="off">
+        <button type="submit" class="btn">Add</button>
+      </form>
+      <div id="snacks-list" class="snacks-list"></div>
+      <p id="snack-error" class="error"></p>
+    </section>
+
+  </div>
+</div>
+
+<script src="assets/app.js"></script>
+</body>
+</html>
