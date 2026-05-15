@@ -257,14 +257,16 @@ function sanitise_state_for_player($game, $myToken) {
     }
 
     return [
-        'code'         => $game['code'],
-        'state'        => $game['state'],
-        'players'      => $players,
-        'straws'       => $strawsOut,
-        'winner_token' => $game['winner_token'] ?? null,
-        'my_token'     => $myToken,
-        'my_straw'     => $myStraw,
-        'suggestions'  => $suggestions,
-        'prize_snack'  => $game['prize_snack'] ?? null,
+        'code'          => $game['code'],
+        'state'         => $game['state'],
+        'players'       => $players,
+        'straws'        => $strawsOut,
+        'winner_token'  => $game['winner_token'] ?? null,
+        'creator_token' => $game['creator_token'] ?? null,
+        'is_host'       => $myToken && ($game['creator_token'] ?? null) === $myToken,
+        'my_token'      => $myToken,
+        'my_straw'      => $myStraw,
+        'suggestions'   => $suggestions,
+        'prize_snack'   => $game['prize_snack'] ?? null,
     ];
 }

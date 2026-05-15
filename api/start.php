@@ -7,9 +7,14 @@ $body = read_json_body();
 $code = trim($body['code'] ?? '');
 if (!$code) json_error('Missing code');
 
-$result = with_game_lock($code, function ($game) {
+$token = get_cookie('player_token');
+
+$result = with_game_lock($code, function ($game) use ($token) {
     if (!$game) return ['__no_write' => true, 'result' => ['error' => 'Game not found', 'code' => 404]];
     if ($game['state'] !== 'lobby') return ['__no_write' => true, 'result' => ['error' => 'Game not in lobby', 'code' => 409]];
+    if (!empty($game['creator_token']) && $game['creator_token'] !== $token) {
+        return ['__no_write' => true, 'result' => ['error' => 'Only the host can start', 'code' => 403]];
+    }
 
     $now = time();
     $online = [];

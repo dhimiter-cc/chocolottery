@@ -38,6 +38,9 @@ $result = with_game_lock($code, function ($game) use ($name, $existingToken) {
         'last_seen'   => time(),
         'straw_index' => null,
     ];
+    if (empty($game['creator_token'])) {
+        $game['creator_token'] = $token;
+    }
     return ['game' => $game, 'result' => ['token' => $token, 'name' => $name, 'code' => $game['code']]];
 });
 

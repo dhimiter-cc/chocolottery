@@ -589,8 +589,8 @@ input[type=text]::placeholder { color: var(--text-dim); }
   100% { box-shadow: 0 0 0 0 rgba(255,210,74,0), 0 6px 14px rgba(0,0,0,0.45); }
 }
 
-/* Drumroll shake on all straws when last pick lands */
-.straws.drumroll .straw { animation: drumroll 0.18s ease-in-out 6 alternate; }
+/* Drumroll shake on all straws during reveal build-up */
+.straws.drumroll .straw { animation: drumroll 0.18s ease-in-out infinite alternate; }
 @keyframes drumroll {
   from { transform: translateY(0) rotate(-0.8deg); }
   to   { transform: translateY(-3px) rotate(0.8deg); }
@@ -884,6 +884,71 @@ input[type=text]::placeholder { color: var(--text-dim); }
 @keyframes reveal-in {
   from { opacity: 0; transform: translateY(8px); }
   to   { opacity: 1; transform: none; }
+}
+
+/* === Start-of-game countdown overlay === */
+.countdown-overlay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 10;
+  pointer-events: none;
+  font-weight: 800;
+  font-size: clamp(4rem, 14vw, 9rem);
+  letter-spacing: -0.04em;
+  line-height: 1;
+  text-align: center;
+  background: linear-gradient(180deg, #FFE89C 0%, var(--winner) 55%, var(--accent-deep) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  text-shadow: 0 6px 40px rgba(232, 152, 23, 0.45);
+}
+.countdown-overlay.small {
+  font-size: clamp(1.4rem, 4.5vw, 2.6rem);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.countdown-overlay.big { font-size: clamp(5rem, 18vw, 11rem); }
+.countdown-overlay.pop { animation: countdown-pop 0.7s cubic-bezier(.34,1.8,.64,1); }
+@keyframes countdown-pop {
+  0%   { transform: scale(0.3); opacity: 0; filter: blur(8px); }
+  45%  { transform: scale(1.18); opacity: 1; filter: blur(0); }
+  100% { transform: scale(1); opacity: 1; }
+}
+.cup-stage.countdown .straws,
+.cup-stage.countdown .cup { opacity: 0.35; transition: opacity 0.3s; }
+
+/* === Reveal build-up: stage charging glow === */
+.cup-stage.charging::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at 50% 60%, rgba(255, 210, 74, 0.28), transparent 65%);
+  pointer-events: none;
+  z-index: 1;
+  animation: charging-pulse 0.45s ease-in-out infinite alternate;
+}
+@keyframes charging-pulse {
+  from { opacity: 0.25; transform: scale(0.95); }
+  to   { opacity: 1;    transform: scale(1.05); }
+}
+
+/* Reveal flash on the stage at the moment of truth */
+.cup-stage.flash {
+  animation: stage-flash 0.6s ease-out;
+}
+@keyframes stage-flash {
+  0%   { box-shadow: inset 0 0 0 0 rgba(255,255,255,0.95),
+                     inset 0 2px 6px rgba(0,0,0,0.6),
+                     inset 0 -2px 4px rgba(0,0,0,0.4); }
+  25%  { box-shadow: inset 0 0 120px 30px rgba(255,255,255,0.9),
+                     inset 0 2px 6px rgba(0,0,0,0.6),
+                     inset 0 -2px 4px rgba(0,0,0,0.4); }
+  100% { box-shadow: inset 0 0 0 0 rgba(255,255,255,0),
+                     inset 0 2px 6px rgba(0,0,0,0.6),
+                     inset 0 -2px 4px rgba(0,0,0,0.4); }
 }
 
 /* === Effects canvas (confetti / tears) === */

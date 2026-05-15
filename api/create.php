@@ -13,6 +13,7 @@ $game = [
     'players'      => (object)[],
     'straws'       => null,
     'winner_token' => null,
+    'creator_token' => null,
     'suggestions'  => [],
 ];
 

@@ -59,6 +59,79 @@
     return trimmed ? trimmed.charAt(0).toUpperCase() : '?';
   }
 
+  // === Sound (Web Audio — synthesized, no assets needed) ===
+  let audioCtx = null;
+  function getAudio() {
+    if (audioCtx) return audioCtx;
+    try {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    } catch { audioCtx = null; }
+    return audioCtx;
+  }
+  function tone(freq, duration, type = 'sine', volume = 0.15, when = 0) {
+    const ctx = getAudio();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume();
+    const t0 = ctx.currentTime + when;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = type;
+    osc.frequency.setValueAtTime(freq, t0);
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(volume, t0 + 0.02);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + duration);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + duration + 0.05);
+  }
+  function noiseBurst(duration, volume = 0.12, when = 0) {
+    const ctx = getAudio();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume();
+    const t0 = ctx.currentTime + when;
+    const len = Math.floor(ctx.sampleRate * duration);
+    const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+    const data = buf.getChannelData(0);
+    for (let i = 0; i < len; i++) data[i] = (Math.random() * 2 - 1) * (1 - i / len);
+    const src = ctx.createBufferSource();
+    src.buffer = buf;
+    const gain = ctx.createGain();
+    gain.gain.value = volume;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 220;
+    src.connect(filter).connect(gain).connect(ctx.destination);
+    src.start(t0);
+  }
+  function playDrumroll(durationMs) {
+    const ticks = Math.floor(durationMs / 55);
+    for (let i = 0; i < ticks; i++) {
+      noiseBurst(0.06, 0.14, i * 0.055);
+    }
+  }
+  function playTick() { tone(520, 0.08, 'triangle', 0.10); }
+  function playWinFanfare() {
+    [523.25, 659.25, 783.99, 1046.50].forEach((f, i) => tone(f, 0.35, 'triangle', 0.18, i * 0.12));
+    tone(1318.51, 0.6, 'triangle', 0.16, 0.55);
+  }
+  function playLoseTrombone() {
+    const ctx = getAudio();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume();
+    const t0 = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(330, t0);
+    osc.frequency.exponentialRampToValueAtTime(110, t0 + 1.1);
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(0.18, t0 + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + 1.2);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + 1.3);
+  }
+
   // === Toast ===
   function showToast(msg) {
     const t = document.createElement('div');
@@ -167,36 +240,53 @@
   }
 
   // === Render: lobby avatars (inside the stage during lobby) ===
+  // Reuse existing DOM nodes per player so the float animation isn't restarted
+  // every poll (which caused the "jump" the user saw).
   function renderLobbyPlayers(players) {
     const tokens = new Set(players.map(p => p.token));
-    lobbyPlayers.innerHTML = '';
 
-    if (players.length === 0) {
-      lobbyEmpty.hidden = false;
-    } else {
-      lobbyEmpty.hidden = true;
-    }
+    const existing = {};
+    [...lobbyPlayers.children].forEach(el => {
+      const t = el.dataset.token;
+      if (t) existing[t] = el;
+    });
+
+    // Remove players who have left
+    Object.keys(existing).forEach(t => {
+      if (!tokens.has(t)) existing[t].remove();
+    });
+
+    lobbyEmpty.hidden = players.length !== 0;
 
     players.forEach(p => {
-      const wrap = document.createElement('div');
-      wrap.className = 'lobby-player';
-      if (!p.online) wrap.classList.add('offline');
-      if (p.is_me) wrap.classList.add('me');
-      if (!prevLobbyTokens.has(p.token) && prevLobbyTokens.size > 0) wrap.classList.add('new');
+      let wrap = existing[p.token];
+      if (!wrap) {
+        wrap = document.createElement('div');
+        wrap.className = 'lobby-player';
+        wrap.dataset.token = p.token;
+        if (prevLobbyTokens.size > 0) wrap.classList.add('new');
+
+        const av = document.createElement('div');
+        av.className = 'avatar';
+        wrap.appendChild(av);
+
+        const nm = document.createElement('div');
+        nm.className = 'name';
+        wrap.appendChild(nm);
+
+        lobbyPlayers.appendChild(wrap);
+      }
+
+      wrap.classList.toggle('offline', !p.online);
+      wrap.classList.toggle('me', !!p.is_me);
       wrap.title = p.name + (p.online ? '' : ' (offline)');
 
-      const av = document.createElement('div');
-      av.className = 'avatar';
+      const av = wrap.querySelector('.avatar');
       av.style.background = avatarColor(p.name);
       av.textContent = avatarInitial(p.name);
 
-      const nm = document.createElement('div');
-      nm.className = 'name';
+      const nm = wrap.querySelector('.name');
       nm.textContent = p.is_me ? p.name + ' (you)' : p.name;
-
-      wrap.appendChild(av);
-      wrap.appendChild(nm);
-      lobbyPlayers.appendChild(wrap);
     });
 
     prevLobbyTokens = tokens;
@@ -251,9 +341,15 @@
 
   function setPhase(state) {
     if (state === currentPhase) return;
+    const previous = currentPhase;
     currentPhase = state;
 
     cupStage.dataset.phase = state;
+
+    // Lobby → Picking: run a 3,2,1,GO countdown before letting players pick
+    if (previous === 'lobby' && state === 'picking') {
+      runStartCountdown();
+    }
 
     phasePill.classList.remove('lobby', 'picking', 'reveal');
     if (state === 'lobby') {
@@ -267,9 +363,11 @@
       phasePill.textContent = 'Reveal';
     }
 
-    // Overlays
-    lobbyOverlay.hidden  = state !== 'lobby';
-    winnerOverlay.hidden = !(state === 'reveal' || state === 'done');
+    // Overlays — winner overlay is shown by the reveal sequence, not here
+    lobbyOverlay.hidden = state !== 'lobby';
+    if (state === 'lobby' || state === 'picking') {
+      winnerOverlay.hidden = true;
+    }
   }
 
   function render(state) {
@@ -295,13 +393,23 @@
       // Show players IN the stage
       renderLobbyPlayers(state.players);
 
-      actionBtn.style.display = '';
-      actionBtn.textContent = onlineCount < 2 ? 'Need 2+ players' : `Start the lottery (${onlineCount})`;
-      actionBtn.disabled = onlineCount < 2;
+      const iAmHost = !!state.is_host;
+      const host = state.players.find(p => p.token === state.creator_token);
+      const hostName = host ? host.name : 'the host';
 
-      phaseDetail.textContent = onlineCount < 2
-        ? `${onlineCount} here. Send the link to your colleagues.`
-        : `${onlineCount} ready. Press Start when everyone's in.`;
+      if (iAmHost) {
+        actionBtn.style.display = '';
+        actionBtn.textContent = onlineCount < 2 ? 'Need 2+ players' : `Start the lottery (${onlineCount})`;
+        actionBtn.disabled = onlineCount < 2;
+        phaseDetail.textContent = onlineCount < 2
+          ? `${onlineCount} here. Send the link to your colleagues.`
+          : `${onlineCount} ready. Press Start when everyone's in.`;
+      } else {
+        actionBtn.style.display = 'none';
+        phaseDetail.textContent = onlineCount < 2
+          ? `${onlineCount} here. Waiting for more.`
+          : `${onlineCount} ready. Waiting for ${hostName} to start.`;
+      }
 
     } else if (state.state === 'picking') {
       renderStraws(state);
@@ -325,19 +433,14 @@
       prizeCard.hidden = true;
 
     } else if (state.state === 'reveal' || state.state === 'done') {
-      renderRevealStraws(state);
-
       const winner = state.players.find(p => p.token === state.winner_token);
-      if (winner) {
-        winnerName.textContent = winner.name;
-        if (winner.is_me) {
-          revealMessage.textContent = "Take it. Walk slowly. Don't apologise.";
-        } else {
-          const me = state.players.find(p => p.is_me);
-          revealMessage.textContent = me
-            ? "Pretend you're happy for them. That's professionalism."
-            : `${winner.name} drew the longest straw.`;
-        }
+
+      if (!revealAnimated) {
+        runRevealSequence(state, winner);
+      } else {
+        // Post-animation re-renders (polls after reveal): just keep the final state visible
+        renderRevealStraws(state);
+        showWinnerOverlay(state, winner);
       }
 
       // Prize snack
@@ -351,22 +454,11 @@
         prizeCard.hidden = true;
       }
 
-      actionBtn.style.display = '';
-      actionBtn.disabled = false;
-      actionBtn.textContent = 'New game';
-
-      phaseDetail.textContent = winner
-        ? `🍫 ${winner.name} wins.`
-        : 'Round over.';
-
-      if (!confettiFired && winner) {
-        confettiFired = true;
-        const meWon = !!winner.is_me;
-        const iAmHere = state.players.some(p => p.is_me);
-        setTimeout(() => fireConfetti(meWon), 200);
-        if (iAmHere && !meWon) {
-          setTimeout(() => fireTearRain(), 600);
-        }
+      if (revealAnimated) {
+        actionBtn.style.display = '';
+        actionBtn.disabled = false;
+        actionBtn.textContent = 'New game';
+        phaseDetail.textContent = winner ? `🍫 ${winner.name} wins.` : 'Round over.';
       }
     }
   }
@@ -424,14 +516,50 @@
     prevPickedSet = nowPicked;
   }
 
-  // === Straws (reveal) — extends the existing straws in place ===
-  function renderRevealStraws(state) {
-    if (!state.straws) return;
+  // === Start-of-game countdown: "3 / 2 / 1 / GO! / Pick your straw" ===
+  function runStartCountdown() {
+    // Remove any stale overlay
+    const stale = cupStage.querySelector('.countdown-overlay');
+    if (stale) stale.remove();
 
-    // Make sure straws exist (they may have been emptied if user joined late at reveal)
-    if (strawsEl.children.length !== state.straws.length) {
+    const overlay = document.createElement('div');
+    overlay.className = 'countdown-overlay';
+    cupStage.appendChild(overlay);
+    cupStage.classList.add('countdown');
+
+    const steps = [
+      { text: '3',               freq: 440, dur: 700 },
+      { text: '2',               freq: 494, dur: 700 },
+      { text: '1',               freq: 554, dur: 700 },
+      { text: 'GO!',             freq: 880, dur: 700, big: true },
+      { text: 'Pick your straw', freq: 0,   dur: 900, small: true },
+    ];
+
+    let i = 0;
+    const tick = () => {
+      if (i >= steps.length) {
+        overlay.remove();
+        cupStage.classList.remove('countdown');
+        return;
+      }
+      const step = steps[i++];
+      overlay.textContent = step.text;
+      overlay.classList.toggle('big', !!step.big);
+      overlay.classList.toggle('small', !!step.small);
+      overlay.classList.remove('pop');
+      void overlay.offsetWidth;
+      overlay.classList.add('pop');
+      if (step.freq) tone(step.freq, step.big ? 0.35 : 0.12, step.big ? 'triangle' : 'square', step.big ? 0.20 : 0.14);
+      setTimeout(tick, step.dur);
+    };
+    tick();
+  }
+
+  // Ensure the straw DOM exists for the given count (used by reveal-after-join)
+  function ensureStrawEls(n) {
+    if (strawsEl.children.length !== n) {
       strawsEl.innerHTML = '';
-      for (let i = 0; i < state.straws.length; i++) {
+      for (let i = 0; i < n; i++) {
         const s = document.createElement('div');
         s.className = 'straw';
         s.style.height = '240px';
@@ -442,19 +570,16 @@
         strawsEl.appendChild(s);
       }
     }
+  }
 
-    if (revealAnimated) return;
-
+  // Final, post-animation render (for late-joiners or re-polls after reveal)
+  function renderRevealStraws(state) {
+    if (!state.straws) return;
+    ensureStrawEls(state.straws.length);
     const claimedBy = {};
-    state.players.forEach(p => {
-      if (p.straw_index != null) claimedBy[p.straw_index] = p;
-    });
-
-    const n = state.straws.length;
+    state.players.forEach(p => { if (p.straw_index != null) claimedBy[p.straw_index] = p; });
     const max = Math.max(...state.straws);
     const minPx = 110, maxPx = 280;
-
-    const strawEls = [];
     [...strawsEl.children].forEach((el, i) => {
       el.classList.remove('drumroll');
       const len = state.straws[i];
@@ -471,23 +596,179 @@
         }
         tag.textContent = claimedBy[i].is_me ? 'you' : claimedBy[i].name;
       }
-      strawEls.push({ el, isWinner });
+      el.style.height = Math.round(minPx + (len / max) * (maxPx - minPx)) + 'px';
+      if (!isWinner) {
+        el.classList.add('loser');
+        if (i % 2 === 0) el.classList.add('lean-right');
+      }
+    });
+  }
 
-      const targetPx = Math.round(minPx + (len / max) * (maxPx - minPx));
-      setTimeout(() => { el.style.height = targetPx + 'px'; }, 150 + i * 110);
+  function showWinnerOverlay(state, winner) {
+    if (!winner) return;
+    winnerName.textContent = winner.name;
+    if (winner.is_me) {
+      revealMessage.textContent = "Take it. Walk slowly. Don't apologise.";
+    } else {
+      const me = state.players.find(p => p.is_me);
+      revealMessage.textContent = me
+        ? "Pretend you're happy for them. That's professionalism."
+        : `${winner.name} drew the longest straw.`;
+    }
+    winnerOverlay.hidden = false;
+  }
+
+  // === The suspenseful reveal sequence ===
+  // Timeline: ~3s of vibration + sparkles + rising rumble → flash → all straws
+  // reveal at once + winner glow + confetti + fanfare, all together.
+  function runRevealSequence(state, winner) {
+    if (revealAnimated) return;
+    revealAnimated = true;
+
+    if (!state.straws) return;
+    ensureStrawEls(state.straws.length);
+
+    winnerOverlay.hidden = true;
+    actionBtn.style.display = 'none';
+
+    const claimedBy = {};
+    state.players.forEach(p => { if (p.straw_index != null) claimedBy[p.straw_index] = p; });
+
+    const max = Math.max(...state.straws);
+    const minPx = 110, maxPx = 280;
+    const winnerIdx = state.straws.findIndex(v => v === 100);
+
+    const strawEls = [...strawsEl.children];
+    strawEls.forEach((el, i) => {
+      if (claimedBy[i]) {
+        el.classList.add('taken');
+        if (claimedBy[i].is_me) el.classList.add('mine');
+        let tag = el.querySelector('.straw-tag');
+        if (!tag) {
+          tag = document.createElement('div');
+          tag.className = 'straw-tag';
+          el.appendChild(tag);
+        }
+        tag.textContent = claimedBy[i].is_me ? 'you' : claimedBy[i].name;
+      }
     });
 
-    // After rise settles, wilt the losers
-    setTimeout(() => {
-      strawEls.forEach(({ el, isWinner }, i) => {
-        if (!isWinner) {
-          el.classList.add('loser');
-          if (i % 2 === 0) el.classList.add('lean-right');
-        }
-      });
-    }, 150 + n * 110 + 1000);
+    // --- Phase 1: 3-second tension build ---
+    const buildMs = 3000;
+    strawsEl.classList.add('drumroll');
+    cupStage.classList.add('charging');
+    phaseDetail.textContent = '🥁 Drawing lots…';
 
-    revealAnimated = true;
+    playDrumroll(buildMs);
+    fireStageSparkles(buildMs);
+    playRisingRumble(buildMs);
+
+    // --- Phase 2: BIG reveal, all at once ---
+    setTimeout(() => {
+      strawsEl.classList.remove('drumroll');
+      cupStage.classList.remove('charging');
+
+      // White flash on the stage
+      cupStage.classList.add('flash');
+      setTimeout(() => cupStage.classList.remove('flash'), 600);
+
+      // All straws snap to their final heights simultaneously
+      strawEls.forEach((el, i) => {
+        const len = state.straws[i];
+        const targetPx = Math.round(minPx + (len / max) * (maxPx - minPx));
+        el.style.height = targetPx + 'px';
+        if (i === winnerIdx) el.classList.add('winner');
+      });
+
+      // Losers wilt while everyone takes in the reveal
+      setTimeout(() => {
+        strawEls.forEach((el, i) => {
+          if (i !== winnerIdx) {
+            el.classList.add('loser');
+            if (i % 2 === 0) el.classList.add('lean-right');
+          }
+        });
+      }, 600);
+
+      phaseDetail.textContent = '…and the winner is…';
+
+      // Winner name + confetti + fanfare all together, after a beat that lets
+      // people register the winning straw first
+      const meWon = !!(winner && winner.is_me);
+      const iAmHere = state.players.some(p => p.is_me);
+      const climaxDelay = 1100;
+
+      setTimeout(() => {
+        showWinnerOverlay(state, winner);
+        if (winner) {
+          playWinFanfare();
+          if (!confettiFired) {
+            confettiFired = true;
+            fireConfetti(meWon);
+            if (iAmHere && !meWon) {
+              setTimeout(() => playLoseTrombone(), 500);
+              setTimeout(() => fireTearRain(), 700);
+            }
+          }
+        }
+        actionBtn.style.display = '';
+        actionBtn.disabled = false;
+        actionBtn.textContent = 'New game';
+        phaseDetail.textContent = winner ? `🍫 ${winner.name} wins.` : 'Round over.';
+      }, climaxDelay);
+    }, buildMs);
+  }
+
+  // Sparkles rising from inside the stage during the tension build
+  function fireStageSparkles(durationMs) {
+    ensureFxCanvas();
+    const colors = ['#FFE89C', '#FFD24A', '#FFFFFF', '#E89817'];
+    const start = performance.now();
+    const spawn = () => {
+      if (performance.now() - start > durationMs) return;
+      const rect = cupStage.getBoundingClientRect();
+      for (let i = 0; i < 4; i++) {
+        fxParticles.push({
+          x: rect.left + Math.random() * rect.width,
+          y: rect.bottom - 40 - Math.random() * 120,
+          vx: (Math.random() - 0.5) * 2.5,
+          vy: -3 - Math.random() * 4,
+          g: 0.04,
+          drag: 0.99,
+          size: 3 + Math.random() * 4,
+          rot: Math.random() * Math.PI * 2,
+          vr: (Math.random() - 0.5) * 0.3,
+          color: colors[(Math.random() * colors.length) | 0],
+          life: 0,
+          maxLife: 90,
+          kind: 'circle',
+        });
+      }
+      startFxLoop();
+      setTimeout(spawn, 60);
+    };
+    spawn();
+  }
+
+  // Rising sawtooth rumble over the full build-up
+  function playRisingRumble(durationMs) {
+    const ctx = getAudio();
+    if (!ctx) return;
+    if (ctx.state === 'suspended') ctx.resume();
+    const t0 = ctx.currentTime;
+    const dur = durationMs / 1000;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(110, t0);
+    osc.frequency.exponentialRampToValueAtTime(660, t0 + dur);
+    gain.gain.setValueAtTime(0.0001, t0);
+    gain.gain.exponentialRampToValueAtTime(0.06, t0 + 0.3);
+    gain.gain.exponentialRampToValueAtTime(0.12, t0 + dur - 0.1);
+    gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(t0);
+    osc.stop(t0 + dur + 0.05);
   }
 
   async function onStrawClick(i) {
