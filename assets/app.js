@@ -18,6 +18,22 @@
   const snacksCount   = $('snacks-count');
   const snackError    = $('snack-error');
 
+  const cupboardForm    = $('cupboard-form');
+  const cupboardName    = $('cupboard-name');
+  const cupboardStock   = $('cupboard-stock');
+  const cupboardList    = $('cupboard-list');
+  const cupboardCount   = $('cupboard-count');
+  const cupboardHint    = $('cupboard-hint');
+  const cupboardError   = $('cupboard-error');
+
+  const giveCard        = $('give-card');
+  const giveStatus      = $('give-status');
+  const giveHostCtrls   = $('give-host-controls');
+  const giveSelect      = $('give-select');
+  const giveBtn         = $('give-btn');
+  const ungiveBtn       = $('ungive-btn');
+  const giveError       = $('give-error');
+
   const cupStage      = $('cup-stage');
   const strawsEl      = $('straws');
   const lobbyOverlay  = $('lobby-overlay');
@@ -33,6 +49,13 @@
   const actionBtn   = $('action-btn');
   const actionError = $('action-error');
 
+  const chatPanel  = $('chat-panel');
+  const chatLog    = $('chat-log');
+  const chatForm   = $('chat-form');
+  const chatInput  = $('chat-input');
+  const chatCount  = $('chat-count');
+  const chatError  = $('chat-error');
+
   const shareCode  = $('share-code');
   const nameModal  = $('name-modal');
   const nameForm   = $('name-form');
@@ -46,6 +69,8 @@
   let prevPickedSet = new Set();
   let currentPhase = null;
   let prevLobbyTokens = new Set();
+  let lastChatId = null;
+  let chatPinnedToBottom = true;
 
   // === Avatar helpers ===
   function avatarColor(name) {
@@ -221,6 +246,271 @@
     } catch {}
   }
 
+  // === Cupboard ===
+  cupboardForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = cupboardName.value.trim();
+    const stock = parseInt(cupboardStock.value, 10);
+    cupboardError.textContent = '';
+    if (!name) return;
+    try {
+      const res = await fetch('api/cupboard.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ action: 'add', code, name, stock: isNaN(stock) ? 1 : stock })
+      });
+      const data = await res.json();
+      if (data.error) { cupboardError.textContent = data.error; return; }
+      cupboardName.value = '';
+      cupboardStock.value = '1';
+      poll();
+    } catch { cupboardError.textContent = 'Could not add'; }
+  });
+
+  async function cupboardUpdateStock(id, stock) {
+    cupboardError.textContent = '';
+    try {
+      const res = await fetch('api/cupboard.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ action: 'update', code, id, stock })
+      });
+      const data = await res.json();
+      if (data.error) cupboardError.textContent = data.error;
+      poll();
+    } catch {}
+  }
+  async function cupboardRemove(id) {
+    cupboardError.textContent = '';
+    try {
+      const res = await fetch('api/cupboard.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ action: 'remove', code, id })
+      });
+      const data = await res.json();
+      if (data.error) cupboardError.textContent = data.error;
+      poll();
+    } catch {}
+  }
+
+  function renderCupboard(state) {
+    const items = state.cupboard || [];
+    const isHost = !!state.is_host;
+    const editable = isHost && state.state === 'lobby';
+
+    cupboardCount.textContent = items.length;
+    cupboardForm.hidden = !editable;
+    cupboardHint.textContent = editable
+      ? "What's actually on the shelf. Stock locks when the game starts."
+      : (isHost
+          ? "Locked while the game is in progress."
+          : "What's on the shelf right now.");
+
+    cupboardList.innerHTML = '';
+    if (items.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'cupboard-empty';
+      empty.textContent = editable
+        ? 'Cupboard is bare. Add something.'
+        : 'Cupboard is empty.';
+      cupboardList.appendChild(empty);
+      return;
+    }
+
+    items.forEach(it => {
+      const row = document.createElement('div');
+      row.className = 'cupboard-item' + (it.stock <= 0 ? ' empty' : '');
+
+      const name = document.createElement('div');
+      name.className = 'ci-name';
+      name.textContent = it.name;
+      row.appendChild(name);
+
+      const stock = document.createElement('div');
+      stock.className = 'ci-stock';
+      stock.textContent = '×' + it.stock;
+      row.appendChild(stock);
+
+      if (editable) {
+        const ctrls = document.createElement('div');
+        ctrls.className = 'ci-controls';
+        const minus = document.createElement('button');
+        minus.type = 'button';
+        minus.className = 'ci-btn';
+        minus.textContent = '−';
+        minus.title = 'Decrease stock';
+        minus.disabled = it.stock <= 0;
+        minus.addEventListener('click', () => cupboardUpdateStock(it.id, Math.max(0, it.stock - 1)));
+        const plus = document.createElement('button');
+        plus.type = 'button';
+        plus.className = 'ci-btn';
+        plus.textContent = '+';
+        plus.title = 'Increase stock';
+        plus.addEventListener('click', () => cupboardUpdateStock(it.id, it.stock + 1));
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'ci-btn del';
+        del.textContent = '×';
+        del.title = 'Remove from cupboard';
+        del.addEventListener('click', () => {
+          if (confirm(`Remove "${it.name}" from the cupboard?`)) cupboardRemove(it.id);
+        });
+        ctrls.appendChild(minus);
+        ctrls.appendChild(plus);
+        ctrls.appendChild(del);
+        row.appendChild(ctrls);
+      }
+
+      cupboardList.appendChild(row);
+    });
+  }
+
+  function renderGiveCard(state) {
+    const isReveal = state.state === 'reveal' || state.state === 'done';
+    if (!isReveal) { giveCard.hidden = true; return; }
+    giveCard.hidden = false;
+    giveError.textContent = '';
+
+    const items = state.cupboard || [];
+    const givenId = state.prize_given_id;
+    const givenName = state.prize_given_name;
+
+    if (givenId) {
+      giveStatus.classList.add('given');
+      giveStatus.textContent = '✓ ' + (givenName || 'Given') + ' was handed to the winner.';
+    } else {
+      giveStatus.classList.remove('given');
+      giveStatus.textContent = 'Host: which cupboard snack did the winner get?';
+    }
+
+    if (!state.is_host) {
+      giveHostCtrls.hidden = true;
+      return;
+    }
+    giveHostCtrls.hidden = false;
+
+    // Build the select from in-stock items (preserve selection if possible)
+    const prev = giveSelect.value;
+    giveSelect.innerHTML = '';
+    const stocked = items.filter(it => it.stock > 0);
+    if (stocked.length === 0 && !givenId) {
+      const opt = document.createElement('option');
+      opt.value = '';
+      opt.textContent = '— nothing in stock —';
+      opt.disabled = true; opt.selected = true;
+      giveSelect.appendChild(opt);
+      giveBtn.disabled = true;
+    } else {
+      stocked.forEach(it => {
+        const opt = document.createElement('option');
+        opt.value = it.id;
+        opt.textContent = `${it.name} (×${it.stock})`;
+        giveSelect.appendChild(opt);
+      });
+      if (prev && stocked.some(it => it.id === prev)) giveSelect.value = prev;
+      giveBtn.disabled = false;
+    }
+
+    giveBtn.hidden = !!givenId;
+    ungiveBtn.hidden = !givenId;
+  }
+
+  giveBtn.addEventListener('click', async () => {
+    giveError.textContent = '';
+    const id = giveSelect.value;
+    if (!id) return;
+    try {
+      const res = await fetch('api/cupboard.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ action: 'give', code, id })
+      });
+      const data = await res.json();
+      if (data.error) { giveError.textContent = data.error; return; }
+      poll();
+    } catch { giveError.textContent = 'Could not save'; }
+  });
+
+  ungiveBtn.addEventListener('click', async () => {
+    giveError.textContent = '';
+    try {
+      const res = await fetch('api/cupboard.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ action: 'ungive', code })
+      });
+      const data = await res.json();
+      if (data.error) { giveError.textContent = data.error; return; }
+      poll();
+    } catch { giveError.textContent = 'Could not undo'; }
+  });
+
+  // === Chat ===
+  chatLog.addEventListener('scroll', () => {
+    const nearBottom = chatLog.scrollHeight - chatLog.scrollTop - chatLog.clientHeight < 40;
+    chatPinnedToBottom = nearBottom;
+  });
+
+  chatForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const text = chatInput.value.trim();
+    chatError.textContent = '';
+    if (!text) return;
+    chatInput.value = '';
+    try {
+      const res = await fetch('api/chat.php', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ code, text })
+      });
+      const data = await res.json();
+      if (data.error) { chatError.textContent = data.error; return; }
+      chatPinnedToBottom = true;
+      poll();
+    } catch { chatError.textContent = 'Could not send'; }
+  });
+
+  function renderChat(state) {
+    const inGame = !!state.in_game;
+    chatPanel.hidden = !inGame;
+    if (!inGame) return;
+
+    const messages = state.chat || [];
+    chatCount.textContent = messages.length;
+
+    const latestId = messages.length ? messages[messages.length - 1].id : null;
+    if (latestId === lastChatId) return; // no new messages
+    lastChatId = latestId;
+
+    chatLog.innerHTML = '';
+    if (messages.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'chat-empty';
+      empty.textContent = 'No messages yet. Break the ice.';
+      chatLog.appendChild(empty);
+      return;
+    }
+
+    messages.forEach(m => {
+      const row = document.createElement('div');
+      row.className = 'chat-msg' + (m.mine ? ' mine' : '');
+      const who = document.createElement('div');
+      who.className = 'who';
+      who.textContent = m.mine ? 'you' : m.name;
+      const txt = document.createElement('div');
+      txt.className = 'text';
+      txt.textContent = m.text;
+      row.appendChild(who);
+      row.appendChild(txt);
+      chatLog.appendChild(row);
+    });
+
+    if (chatPinnedToBottom) {
+      chatLog.scrollTop = chatLog.scrollHeight;
+    }
+  }
+
   // === Polling ===
   async function poll() {
     try {
@@ -377,6 +667,13 @@
     // === Snacks (always visible, voting always live) ===
     renderSnacks(state.suggestions, true);
     snacksCount.textContent = state.suggestions ? state.suggestions.length : 0;
+
+    // === Cupboard + give-card ===
+    renderCupboard(state);
+    renderGiveCard(state);
+
+    // === Chat (participants only) ===
+    renderChat(state);
 
     const onlineCount = state.players.filter(p => p.online).length;
 

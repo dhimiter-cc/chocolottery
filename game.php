@@ -46,6 +46,22 @@ $presetName = get_cookie('player_name') ?? '';
 
   <div class="game-grid">
 
+    <!-- Cupboard: real-world snack stock -->
+    <section class="panel cupboard-panel">
+      <div class="section-head">
+        <h2>🍫 The cupboard</h2>
+        <span class="count" id="cupboard-count">0</span>
+      </div>
+      <p class="muted" id="cupboard-hint">What's actually on the shelf. Host: set stock before starting.</p>
+      <form id="cupboard-form" class="cupboard-form" hidden>
+        <input type="text" id="cupboard-name" maxlength="60" placeholder="e.g. KitKat" autocomplete="off">
+        <input type="text" id="cupboard-stock" inputmode="numeric" maxlength="3" placeholder="qty" value="1">
+        <button type="submit" class="btn">Add</button>
+      </form>
+      <div id="cupboard-list" class="cupboard-list"></div>
+      <p id="cupboard-error" class="error"></p>
+    </section>
+
     <!-- Snacks: left column on desktop -->
     <section class="panel snacks-panel">
       <div class="section-head">
@@ -59,6 +75,20 @@ $presetName = get_cookie('player_name') ?? '';
       </form>
       <div id="snacks-list" class="snacks-list"></div>
       <p id="snack-error" class="error"></p>
+    </section>
+
+    <!-- Chat: right column on desktop, only for joined participants -->
+    <section class="panel chat-panel" id="chat-panel" hidden>
+      <div class="section-head">
+        <h2>💬 Chat</h2>
+        <span class="count" id="chat-count">0</span>
+      </div>
+      <div id="chat-log" class="chat-log"></div>
+      <form id="chat-form" class="chat-form">
+        <input type="text" id="chat-input" maxlength="240" placeholder="say something…" autocomplete="off">
+        <button type="submit" class="btn">Send</button>
+      </form>
+      <p id="chat-error" class="error"></p>
     </section>
 
     <!-- Stage: right column on desktop, top on mobile -->
@@ -94,6 +124,17 @@ $presetName = get_cookie('player_name') ?? '';
         <div class="prize-label">🍫 Prize snack</div>
         <div class="prize-text" id="prize-text"></div>
         <div class="prize-meta" id="prize-meta"></div>
+      </div>
+
+      <div id="give-card" class="give-card" hidden>
+        <div class="give-label">From the cupboard</div>
+        <div id="give-status" class="give-status"></div>
+        <div id="give-host-controls" class="give-controls" hidden>
+          <select id="give-select"></select>
+          <button id="give-btn" type="button" class="btn btn-primary">Mark given (−1)</button>
+          <button id="ungive-btn" type="button" class="btn btn-ghost" hidden>Undo</button>
+        </div>
+        <p id="give-error" class="error" style="margin: 8px 0 0;"></p>
       </div>
 
       <p id="action-error" class="error" style="margin: 10px 0 0;"></p>

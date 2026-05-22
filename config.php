@@ -4,6 +4,7 @@
 define('DATA_DIR', __DIR__ . '/data');
 define('GAMES_DIR', DATA_DIR . '/games');
 define('LEADERBOARD_FILE', DATA_DIR . '/leaderboard.json');
+define('CUPBOARD_FILE', DATA_DIR . '/cupboard.json');
 define('ONLINE_THRESHOLD', 15);          // seconds
 define('GAME_TTL', 86400);               // 24h
 define('COOKIE_TTL', 86400);             // 24h
@@ -14,6 +15,9 @@ if (!is_dir(GAMES_DIR)) {
 }
 if (!file_exists(LEADERBOARD_FILE)) {
     @file_put_contents(LEADERBOARD_FILE, json_encode(['wins' => []]));
+}
+if (!file_exists(CUPBOARD_FILE)) {
+    @file_put_contents(CUPBOARD_FILE, json_encode(['items' => []]));
 }
 
 function json_response($data, $code = 200) {
@@ -106,6 +110,70 @@ function append_leaderboard($win) {
     fflush($fp);
     flock($fp, LOCK_UN);
     fclose($fp);
+}
+
+function load_cupboard() {
+    if (!file_exists(CUPBOARD_FILE)) return ['items' => []];
+    $raw = file_get_contents(CUPBOARD_FILE);
+    $data = json_decode($raw, true);
+    if (!is_array($data) || !isset($data['items']) || !is_array($data['items'])) {
+        return ['items' => []];
+    }
+    return $data;
+}
+
+// Read-modify-write the cupboard under an exclusive lock.
+function with_cupboard_lock(callable $fn) {
+    $fp = fopen(CUPBOARD_FILE, 'c+');
+    if (!$fp) return null;
+    if (!flock($fp, LOCK_EX)) { fclose($fp); return null; }
+
+    $raw = stream_get_contents($fp);
+    $data = json_decode($raw, true);
+    if (!is_array($data) || !isset($data['items']) || !is_array($data['items'])) {
+        $data = ['items' => []];
+    }
+
+    $result = $fn($data);
+
+    $writeData = null;
+    $ret = null;
+    if (is_array($result) && array_key_exists('__no_write', $result)) {
+        $ret = $result['result'] ?? null;
+    } else if (is_array($result) && isset($result['data'])) {
+        $writeData = $result['data'];
+        $ret = $result['result'] ?? null;
+    } else if (is_array($result)) {
+        $writeData = $result;
+        $ret = $result;
+    }
+
+    if ($writeData !== null) {
+        ftruncate($fp, 0);
+        rewind($fp);
+        fwrite($fp, json_encode($writeData));
+        fflush($fp);
+    }
+    flock($fp, LOCK_UN);
+    fclose($fp);
+    return $ret;
+}
+
+function cupboard_items_public() {
+    $data = load_cupboard();
+    $out = [];
+    foreach ($data['items'] as $item) {
+        $out[] = [
+            'id'    => $item['id'] ?? '',
+            'name'  => $item['name'] ?? '',
+            'stock' => (int)($item['stock'] ?? 0),
+        ];
+    }
+    usort($out, function ($a, $b) {
+        if ($b['stock'] !== $a['stock']) return $b['stock'] - $a['stock'];
+        return strcasecmp($a['name'], $b['name']);
+    });
+    return $out;
 }
 
 function load_leaderboard() {
@@ -256,6 +324,20 @@ function sanitise_state_for_player($game, $myToken) {
         });
     }
 
+    $chat = [];
+    $inGame = $myToken && isset($game['players'][$myToken]);
+    if ($inGame && isset($game['chat']) && is_array($game['chat'])) {
+        foreach ($game['chat'] as $m) {
+            $chat[] = [
+                'id'   => $m['id'] ?? '',
+                'name' => $m['name'] ?? 'Anon',
+                'text' => $m['text'] ?? '',
+                'ts'   => $m['ts'] ?? 0,
+                'mine' => ($m['token'] ?? '') === $myToken,
+            ];
+        }
+    }
+
     return [
         'code'          => $game['code'],
         'state'         => $game['state'],
@@ -268,5 +350,10 @@ function sanitise_state_for_player($game, $myToken) {
         'my_straw'      => $myStraw,
         'suggestions'   => $suggestions,
         'prize_snack'   => $game['prize_snack'] ?? null,
+        'cupboard'      => cupboard_items_public(),
+        'prize_given_id'   => $game['prize_given_id'] ?? null,
+        'prize_given_name' => $game['prize_given_name'] ?? null,
+        'chat'          => $chat,
+        'in_game'       => $inGame,
     ];
 }
