@@ -48,6 +48,49 @@
   </footer>
 </div>
 
+<!-- Feature announcement modal -->
+<div id="announce-modal" class="modal" hidden>
+  <div class="modal-card announce-card">
+
+    <!-- Step 1 -->
+    <div id="announce-step-1">
+      <div class="announce-emoji">⚖️</div>
+      <span class="announce-badge">New feature</span>
+
+      <h2 class="announce-title">Fairness Check is here</h2>
+
+      <p class="announce-body">Due to recent complaints, the chocolottery has introduced a Fairness Check.</p>
+      <p class="announce-body">It compares each person's actual wins against what chance would statistically predict — based on the real number of players in every game they played.</p>
+      <p class="announce-body">Click anyone's row to see their full game history and individual odds per game.</p>
+
+      <div class="announce-actions">
+        <span class="announce-step-indicator">1 of 2</span>
+        <button type="button" id="announce-continue" class="btn btn-primary">Continue →</button>
+      </div>
+    </div>
+
+    <!-- Step 2 -->
+    <div id="announce-step-2" hidden>
+      <div class="announce-emoji">📊</div>
+      <span class="announce-badge">Good to know</span>
+
+      <h2 class="announce-title">A heads up on the data</h2>
+
+      <p class="announce-body">To power this feature, the app now stores a bit more per game: the total number of participants and which players took part — not just who won.</p>
+      <p class="announce-body">Older games don't have this data, so they won't count towards expected win calculations. The first meaningful stats will show up after a few new games have been played.</p>
+
+      <div class="announce-actions">
+        <span class="announce-step-indicator">2 of 2</span>
+        <div class="announce-actions-right">
+          <button type="button" id="announce-skip" class="btn btn-ghost">Close</button>
+          <button type="button" id="announce-cta" class="btn btn-primary">Check it out ⚖️</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
 <!-- Fairness Check modal -->
 <div id="fairness-modal" class="modal" hidden>
   <div class="modal-card fairness-modal-card">
@@ -183,6 +226,32 @@ document.getElementById('join-form').addEventListener('submit', async (e) => {
   document.getElementById('fairness-btn').addEventListener('click', openFairness);
   document.getElementById('fairness-close').addEventListener('click', () => modal.setAttribute('hidden', ''));
   modal.addEventListener('click', e => { if (e.target === modal) modal.setAttribute('hidden', ''); });
+
+  // Feature announcement — show once, track in localStorage
+  const ANNOUNCE_KEY  = 'choclottery_fairness_intro_v1';
+  const announceModal = document.getElementById('announce-modal');
+  const step1         = document.getElementById('announce-step-1');
+  const step2         = document.getElementById('announce-step-2');
+
+  function dismissAnnounce() {
+    announceModal.setAttribute('hidden', '');
+    localStorage.setItem(ANNOUNCE_KEY, '1');
+  }
+
+  document.getElementById('announce-continue').addEventListener('click', () => {
+    step1.setAttribute('hidden', '');
+    step2.removeAttribute('hidden');
+  });
+
+  document.getElementById('announce-skip').addEventListener('click', dismissAnnounce);
+  document.getElementById('announce-cta').addEventListener('click', () => {
+    dismissAnnounce();
+    openFairness();
+  });
+
+  if (!localStorage.getItem(ANNOUNCE_KEY)) {
+    announceModal.removeAttribute('hidden');
+  }
 })();
 </script>
 </body>
