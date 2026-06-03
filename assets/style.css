@@ -172,6 +172,25 @@ h2 {
 .btn-ghost:hover { color: var(--text); border-color: #DACBA5; background: var(--bg-soft); }
 .btn-ghost.active { color: var(--accent-deep); background: var(--accent-soft); border-color: var(--accent); }
 
+.btn-danger {
+  background: linear-gradient(180deg, #DC2A2A 0%, #A81E1E 100%);
+  color: #fff;
+  border-color: rgba(0,0,0,0.12);
+  font-weight: 600;
+  font-size: 0.85rem;
+  box-shadow: 0 1px 0 rgba(255,255,255,0.15) inset, 0 3px 10px rgba(220,42,42,0.3);
+}
+.btn-danger:hover { filter: brightness(1.08); }
+.btn-danger.armed {
+  background: linear-gradient(180deg, #FF4040 0%, #C41A1A 100%);
+  animation: pulse-danger 0.7s ease-in-out infinite alternate;
+}
+@keyframes pulse-danger {
+  from { box-shadow: 0 0 0 0 rgba(220,42,42,0.5); }
+  to   { box-shadow: 0 0 0 7px rgba(220,42,42,0); }
+}
+.restart-btn { margin-top: 10px; display: block; width: 100%; }
+
 /* === Forms === */
 form label {
   display: block;
@@ -631,6 +650,42 @@ input[type=text]::placeholder { color: var(--text-dim); }
   font-size: 0.9rem;
   font-style: italic;
 }
+
+.snack-non-voters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 8px 10px;
+  margin-top: 6px;
+  background: var(--bg-soft);
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  font-size: 0.8rem;
+}
+.non-voter-label {
+  color: var(--text-dim);
+  white-space: nowrap;
+  margin-right: 2px;
+}
+.non-voter-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: none;
+  color: #fff;
+  font-weight: 700;
+  font-size: 0.75rem;
+  cursor: pointer;
+  opacity: 0.55;
+  transition: opacity 0.15s, transform 0.15s;
+  padding: 0;
+}
+.non-voter-chip:not(.is-me):hover { opacity: 0.9; transform: scale(1.15); }
+.non-voter-chip.is-me { opacity: 0.35; cursor: default; }
 
 /* === STRAWS / STAGE === */
 /* The "stage" — a dark inset frame so the yellow straws POP */

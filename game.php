@@ -66,6 +66,7 @@ $presetName = get_cookie('player_name') ?? '';
         <button type="submit" class="btn">Add</button>
       </form>
       <div id="snacks-list" class="snacks-list"></div>
+      <div id="snack-non-voters" class="snack-non-voters" hidden></div>
       <p id="snack-error" class="error"></p>
     </section>
 
@@ -130,6 +131,7 @@ $presetName = get_cookie('player_name') ?? '';
       </div>
 
       <p id="action-error" class="error" style="margin: 10px 0 0;"></p>
+      <button id="restart-btn" class="btn btn-danger restart-btn" hidden>↺ Restart game</button>
     </section>
 
   </div>

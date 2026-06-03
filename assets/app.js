@@ -49,10 +49,12 @@
   const prizeText     = $('prize-text');
   const prizeMeta     = $('prize-meta');
 
-  const phasePill   = $('phase-pill');
-  const phaseDetail = $('phase-detail');
-  const actionBtn   = $('action-btn');
-  const actionError = $('action-error');
+  const phasePill      = $('phase-pill');
+  const phaseDetail    = $('phase-detail');
+  const actionBtn      = $('action-btn');
+  const actionError    = $('action-error');
+  const restartBtn     = $('restart-btn');
+  const snackNonVoters = $('snack-non-voters');
 
   const chatPanel  = $('chat-panel');
   const chatLog    = $('chat-log');
@@ -76,6 +78,7 @@
   let prevLobbyTokens = new Set();
   let lastChatId = null;
   let chatPinnedToBottom = true;
+  let restartConfirmTimer = null;
 
   // === Avatar helpers ===
   function avatarColor(name) {
@@ -224,6 +227,35 @@
       } catch { actionError.textContent = 'Could not start'; }
     } else if (lastState.state === 'reveal' || lastState.state === 'done') {
       window.location = 'index.php';
+    }
+  });
+
+  // === Restart game (host only, danger) ===
+  restartBtn.addEventListener('click', async () => {
+    actionError.textContent = '';
+    if (!restartConfirmTimer) {
+      restartBtn.textContent = 'Really restart? Click again to confirm';
+      restartBtn.classList.add('armed');
+      restartConfirmTimer = setTimeout(() => {
+        restartConfirmTimer = null;
+        restartBtn.textContent = '↺ Restart game';
+        restartBtn.classList.remove('armed');
+      }, 4000);
+    } else {
+      clearTimeout(restartConfirmTimer);
+      restartConfirmTimer = null;
+      restartBtn.textContent = '↺ Restart game';
+      restartBtn.classList.remove('armed');
+      try {
+        const res = await fetch('api/restart.php', {
+          method: 'POST',
+          headers: {'Content-Type': 'application/json'},
+          body: JSON.stringify({ code })
+        });
+        const data = await res.json();
+        if (data.error) { actionError.textContent = data.error; return; }
+        poll();
+      } catch { actionError.textContent = 'Could not restart'; }
     }
   });
 
@@ -639,7 +671,7 @@
   }
 
   // === Render: snacks ===
-  function renderSnacks(suggestions, cupboard, interactive) {
+  function renderSnacks(suggestions, cupboard, interactive, players, isHost) {
     renderQuickPicks(cupboard, suggestions, interactive);
     snacksList.innerHTML = '';
     if (!suggestions || suggestions.length === 0) {
@@ -649,6 +681,7 @@
         ? 'No suggestions yet. Be brave. Be specific. Be Kevin.'
         : 'No suggestions submitted.';
       snacksList.appendChild(empty);
+      snackNonVoters.hidden = true;
       return;
     }
     suggestions.forEach(s => {
@@ -673,6 +706,39 @@
       row.appendChild(text);
       row.appendChild(author);
       snacksList.appendChild(row);
+    });
+
+    // === Non-voter banner ===
+    if (!players || !players.length) { snackNonVoters.hidden = true; return; }
+    const voterTokens = new Set((suggestions || []).flatMap(s => s.voted_tokens || []));
+    const nonVoters = players.filter(p => !voterTokens.has(p.token));
+    if (nonVoters.length === 0) {
+      snackNonVoters.hidden = true;
+      return;
+    }
+    snackNonVoters.hidden = false;
+    snackNonVoters.innerHTML = '';
+    const label = document.createElement('span');
+    label.className = 'non-voter-label';
+    label.textContent = 'Still need votes:';
+    snackNonVoters.appendChild(label);
+    nonVoters.forEach(p => {
+      const chip = document.createElement('button');
+      chip.type = 'button';
+      chip.className = 'non-voter-chip' + (p.is_me ? ' is-me' : '');
+      chip.style.background = avatarColor(p.name);
+      chip.textContent = avatarInitial(p.name);
+      if (isHost && !p.is_me) {
+        chip.title = `Nudge ${p.name} via chat`;
+        chip.addEventListener('click', () => {
+          chatInput.value = `@${p.name} cast your vote 👆`;
+          chatInput.focus();
+        });
+      } else {
+        chip.title = p.name + (p.is_me ? ' (you)' : '');
+        chip.style.cursor = 'default';
+      }
+      snackNonVoters.appendChild(chip);
     });
   }
 
@@ -722,7 +788,7 @@
     setPhase(state.state);
 
     // === Snacks (always visible, voting always live) ===
-    renderSnacks(state.suggestions, state.cupboard, true);
+    renderSnacks(state.suggestions, state.cupboard, true, state.players, state.is_host);
     snacksCount.textContent = state.suggestions ? state.suggestions.length : 0;
 
     // === Cupboard + give-card ===
@@ -814,6 +880,16 @@
         actionBtn.textContent = 'New game';
         phaseDetail.textContent = winner ? `🍫 ${winner.name} wins.` : 'Round over.';
       }
+    }
+
+    // === Restart button (host only, non-lobby) ===
+    const showRestart = !!(state.is_host && state.state !== 'lobby');
+    restartBtn.hidden = !showRestart;
+    if (!showRestart && restartConfirmTimer) {
+      clearTimeout(restartConfirmTimer);
+      restartConfirmTimer = null;
+      restartBtn.textContent = '↺ Restart game';
+      restartBtn.classList.remove('armed');
     }
   }
 

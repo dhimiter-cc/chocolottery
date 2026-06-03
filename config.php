@@ -311,8 +311,9 @@ function sanitise_state_for_player($game, $myToken) {
                 'text'        => $s['text'] ?? '',
                 'author_name' => $s['author_name'] ?? 'Anon',
                 'mine'        => ($s['author_token'] ?? '') === $myToken,
-                'votes'       => count($votes),
-                'voted'       => $myToken && in_array($myToken, $votes, true),
+                'votes'        => count($votes),
+                'voted_tokens' => $votes,
+                'voted'        => $myToken && in_array($myToken, $votes, true),
                 'created_at'  => $s['created_at'] ?? 0,
             ];
         }
