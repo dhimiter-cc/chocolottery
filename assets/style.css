@@ -279,16 +279,18 @@ input[type=text]::placeholder { color: var(--text-dim); }
   gap: 16px;
 }
 @media (min-width: 880px) {
+  .game-room  { height: calc(100vh - 64px); } /* definite height so the grid row can resolve */
   .game-grid {
     flex: 1;
+    min-height: 0; /* let the flex item shrink so overflow works inside it */
     grid-template-columns: 300px 1fr 300px;
     grid-template-rows: 1fr;
     grid-template-areas: "snacks stage chat";
     align-items: stretch;
   }
-  .stage-panel  { grid-area: stage; }
+  .stage-panel  { grid-area: stage; overflow-y: auto; }
   .snacks-panel { grid-area: snacks; overflow-y: auto; }
-  .chat-panel   { grid-area: chat; }
+  .chat-panel   { grid-area: chat; min-height: 0; overflow: hidden; } /* contain the panel */
 }
 
 /* === Chat panel === */
@@ -298,7 +300,7 @@ input[type=text]::placeholder { color: var(--text-dim); }
   min-height: 360px;
 }
 @media (min-width: 880px) {
-  .chat-panel { max-height: none; height: 100%; }
+  .chat-panel { min-height: 0; max-height: none; height: 100%; }
 }
 .chat-log {
   flex: 1;
@@ -310,7 +312,10 @@ input[type=text]::placeholder { color: var(--text-dim); }
   margin-top: 8px;
   border-top: 1px dashed var(--border);
   border-bottom: 1px dashed var(--border);
-  min-height: 200px;
+  min-height: 200px; /* keeps space on mobile */
+}
+@media (min-width: 880px) {
+  .chat-log { min-height: 0; } /* on desktop let flex+overflow do the work */
 }
 .chat-msg {
   display: flex;
