@@ -6,9 +6,9 @@ if ($_SERVER['REQUEST_METHOD'] !== 'GET') json_error('GET required', 405);
 $data = load_leaderboard();
 $wins = $data['wins'] ?? [];
 
-// name => [ actual_wins, expected_wins, tracked ]
+// name => [ actual_wins, expected_wins, tracked, games[] ]
 $players = [];
-$totalGames  = count($wins);
+$totalGames   = count($wins);
 $trackedGames = 0;
 
 foreach ($wins as $w) {
@@ -18,23 +18,32 @@ foreach ($wins as $w) {
     // Always record the actual win
     if ($winnerName) {
         if (!isset($players[$winnerName])) {
-            $players[$winnerName] = ['actual_wins' => 0, 'expected_wins' => 0.0, 'tracked' => false];
+            $players[$winnerName] = ['actual_wins' => 0, 'expected_wins' => 0.0, 'tracked' => false, 'games' => []];
         }
         $players[$winnerName]['actual_wins']++;
     }
 
-    // Distribute expected wins only when we have the full participant list
+    // Distribute expected wins and record game history only when we have the full list
     if (is_array($playerNames) && count($playerNames) > 0) {
         $trackedGames++;
         $n    = count($playerNames);
         $prob = 1.0 / $n;
+
+        $gameEntry = [
+            'game_code'    => $w['game_code']   ?? '?',
+            'month'        => $w['month']        ?? '',
+            'participants' => $n,
+            'chance_pct'   => round(100 / $n, 1),
+        ];
+
         foreach ($playerNames as $pName) {
             if (!$pName) continue;
             if (!isset($players[$pName])) {
-                $players[$pName] = ['actual_wins' => 0, 'expected_wins' => 0.0, 'tracked' => false];
+                $players[$pName] = ['actual_wins' => 0, 'expected_wins' => 0.0, 'tracked' => false, 'games' => []];
             }
             $players[$pName]['expected_wins'] += $prob;
-            $players[$pName]['tracked'] = true;
+            $players[$pName]['tracked']        = true;
+            $players[$pName]['games'][]        = array_merge($gameEntry, ['won' => $pName === $winnerName]);
         }
     }
 }
@@ -65,6 +74,7 @@ foreach ($players as $name => $p) {
         'expected_wins' => $tracked ? round($expected, 2) : null,
         'luck_score'    => $luckScore,
         'verdict'       => $verdict,
+        'games'         => $p['games'],
     ];
 }
 

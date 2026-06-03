@@ -206,24 +206,48 @@ $presetName = get_cookie('player_name') ?? '';
       body.innerHTML = '<p class="muted center">No games played yet — nothing to check!</p>';
       return;
     }
-    const rows = data.players.map(p => {
+
+    function fmtMonth(m) {
+      if (!m) return '—';
+      return new Date(m + '-02').toLocaleDateString('en', { month: 'short', year: 'numeric' });
+    }
+
+    const rows = data.players.map((p, i) => {
       const expected = p.expected_wins !== null ? p.expected_wins.toFixed(1) : '—';
       const score    = p.luck_score    !== null ? p.luck_score.toFixed(2)    : '—';
       const verdict  = p.verdict
         ? `<span class="fairness-verdict fairness-${p.verdict.class}">${p.verdict.emoji} ${p.verdict.label}</span>`
         : '<span class="fairness-verdict fairness-none">—</span>';
-      return `<tr>
-        <td>${p.name}</td>
-        <td class="tc">${p.actual_wins}</td>
-        <td class="tc">${expected}</td>
-        <td class="tc">${score}</td>
-        <td>${verdict}</td>
-      </tr>`;
+
+      const gameRows = (p.games || []).map(g => `
+        <div class="fg-row">
+          <span class="fg-month">${fmtMonth(g.month)}</span>
+          <span class="fg-players">👥 ${g.participants} players</span>
+          <span class="fg-chance">1 in ${g.participants} &nbsp;·&nbsp; ${g.chance_pct}% chance</span>
+          <span class="fg-result ${g.won ? 'fg-won' : 'fg-lost'}">${g.won ? '🍫 Won' : '✗ Lost'}</span>
+        </div>`).join('');
+
+      const detail = p.games && p.games.length
+        ? `<div class="fg-list">${gameRows}</div>`
+        : '<p class="muted" style="margin:0;font-size:0.85rem;">No tracked games yet.</p>';
+
+      return `
+        <tr class="fairness-row" data-idx="${i}">
+          <td><span class="fg-chevron">▸</span> ${p.name}</td>
+          <td class="tc">${p.actual_wins}</td>
+          <td class="tc">${expected}</td>
+          <td class="tc">${score}</td>
+          <td>${verdict}</td>
+        </tr>
+        <tr class="fairness-detail" id="fg-detail-${i}" hidden>
+          <td colspan="5"><div class="fg-detail-inner">${detail}</div></td>
+        </tr>`;
     }).join('');
+
     body.innerHTML = `
       <table class="leaderboard fairness-table">
         <thead><tr>
-          <th>Name</th>
+          <th>Name<span class="th-sub">click a row to see game history</span></th>
           <th>Wins<span class="th-sub">times you've won</span></th>
           <th>Expected<span class="th-sub">wins chance predicts, based on how many players were in each game you played</span></th>
           <th>Luck score<span class="th-sub">your wins ÷ expected — 1.0 means perfectly average</span></th>
@@ -231,6 +255,18 @@ $presetName = get_cookie('player_name') ?? '';
         </tr></thead>
         <tbody>${rows}</tbody>
       </table>`;
+
+    body.querySelectorAll('.fairness-row').forEach(row => {
+      row.addEventListener('click', () => {
+        const detail  = document.getElementById('fg-detail-' + row.dataset.idx);
+        const chevron = row.querySelector('.fg-chevron');
+        const opening = detail.hidden;
+        detail.hidden = !opening;
+        chevron.textContent = opening ? '▾' : '▸';
+        row.classList.toggle('fairness-row-open', opening);
+      });
+    });
+
     const diff = data.total_games - data.tracked_games;
     note.textContent = diff > 0
       ? `${diff} game${diff > 1 ? 's' : ''} predate participant tracking and are excluded from expected win calculations.`
