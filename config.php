@@ -170,7 +170,6 @@ function cupboard_items_public() {
         ];
     }
     usort($out, function ($a, $b) {
-        if ($b['stock'] !== $a['stock']) return $b['stock'] - $a['stock'];
         return strcasecmp($a['name'], $b['name']);
     });
     return $out;

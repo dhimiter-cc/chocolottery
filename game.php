@@ -69,6 +69,11 @@ $presetName = get_cookie('player_name') ?? '';
         <span class="count" id="snacks-count">0</span>
       </div>
       <p class="muted">Pitch ideas. Upvote favourites. Highest-voted wins. Tie or no votes? Random. (Dwight, no beets.)</p>
+      <div id="snack-quick-wrap" hidden>
+        <div class="snack-quick-label">In stock — click to add &amp; vote</div>
+        <div id="snack-quick-picks" class="snack-quick-picks"></div>
+      </div>
+      <div class="snack-form-divider">or type your own</div>
       <form id="snack-form" class="snack-form">
         <input type="text" id="snack-input" maxlength="80" placeholder="Tim Tams, Speculoos, that weird Schrute beet thing…" autocomplete="off">
         <button type="submit" class="btn">Add</button>

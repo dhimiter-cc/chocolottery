@@ -70,7 +70,7 @@ body {
 }
 
 .parchment {
-  max-width: 980px;
+  max-width: 1600px;
   margin: 0 auto;
 }
 
@@ -258,8 +258,8 @@ input[type=text]::placeholder { color: var(--text-dim); }
   .game-grid {
     grid-template-columns: 300px 1fr 300px;
     grid-template-areas:
-      "cupboard stage chat"
-      "snacks   stage chat";
+      "snacks   stage chat"
+      "cupboard stage chat";
     align-items: start;
   }
   .stage-panel    { grid-area: stage; }
@@ -470,13 +470,102 @@ input[type=text]::placeholder { color: var(--text-dim); }
   border-radius: 4px;
 }
 
+/* === Quick-pick chips (cupboard items in snack panel) === */
+.snack-quick-wrap {
+  background: var(--accent-soft);
+  border: 1px solid rgba(232,152,23,0.3);
+  border-radius: var(--radius);
+  padding: 12px 14px 14px;
+  margin: 10px 0 4px;
+}
+.snack-quick-label {
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--accent-deep);
+  margin: 0 0 8px;
+}
+.snack-quick-picks {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+.quick-pick-chip {
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  font-weight: 600;
+  padding: 7px 16px;
+  border-radius: 999px;
+  border: 1.5px solid rgba(232,152,23,0.45);
+  background: var(--panel);
+  color: var(--text);
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(58,38,12,0.08);
+  transition: background 0.15s, border-color 0.15s, color 0.15s, box-shadow 0.15s, transform 0.08s;
+  user-select: none;
+}
+.quick-pick-chip:hover {
+  border-color: var(--accent);
+  background: linear-gradient(180deg, #fff 0%, #FFF5E0 100%);
+  color: var(--accent-deep);
+  box-shadow: 0 2px 8px rgba(232,152,23,0.25);
+  transform: translateY(-1px);
+}
+.quick-pick-chip:active { transform: translateY(0); }
+.quick-pick-chip.listed {
+  background: var(--bg-soft);
+  border-color: var(--border);
+  color: var(--text-mute);
+  box-shadow: none;
+  font-weight: 500;
+}
+.quick-pick-chip.listed:hover {
+  border-color: var(--accent);
+  color: var(--accent-deep);
+  background: var(--accent-soft);
+  box-shadow: none;
+  transform: none;
+}
+.quick-pick-chip.voted {
+  background: linear-gradient(180deg, var(--accent) 0%, var(--accent-deep) 100%);
+  border-color: transparent;
+  color: #fff;
+  box-shadow: 0 2px 8px rgba(232,152,23,0.4);
+}
+.quick-pick-chip.voted:hover {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
+}
+
+/* Manual add — visually subordinate */
+.snack-form-divider {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 14px 0 8px;
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.snack-form-divider::before,
+.snack-form-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border-soft);
+}
+
 /* === Snacks / suggestions === */
 .snack-form {
   display: flex;
   gap: 8px;
-  margin: 12px 0 16px;
+  margin: 0 0 16px;
 }
-.snack-form input { margin-top: 0; }
+.snack-form input { margin-top: 0; opacity: 0.8; }
+.snack-form input:focus { opacity: 1; }
 .snack-form .btn { white-space: nowrap; }
 
 .snacks-list {

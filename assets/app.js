@@ -12,11 +12,13 @@
   // Always-visible elements
   const lobbyPlayers  = $('lobby-players');
   const lobbyEmpty    = $('lobby-empty');
-  const snackForm     = $('snack-form');
-  const snackInput    = $('snack-input');
-  const snacksList    = $('snacks-list');
-  const snacksCount   = $('snacks-count');
-  const snackError    = $('snack-error');
+  const snackForm       = $('snack-form');
+  const snackInput      = $('snack-input');
+  const snacksList      = $('snacks-list');
+  const snacksCount     = $('snacks-count');
+  const snackError      = $('snack-error');
+  const snackQuickWrap  = $('snack-quick-wrap');
+  const snackQuickPicks = $('snack-quick-picks');
 
   const cupboardForm    = $('cupboard-form');
   const cupboardName    = $('cupboard-name');
@@ -582,8 +584,52 @@
     prevLobbyTokens = tokens;
   }
 
+  // === Render: quick-pick chips from cupboard stock ===
+  function renderQuickPicks(cupboard, suggestions, interactive) {
+    const inStock = (cupboard || []).filter(it => it.stock > 0);
+    if (inStock.length === 0) { snackQuickWrap.hidden = true; return; }
+    snackQuickWrap.hidden = false;
+    snackQuickPicks.innerHTML = '';
+
+    inStock.forEach(it => {
+      const existing = (suggestions || []).find(s => s.text.toLowerCase() === it.name.toLowerCase());
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'quick-pick-chip' + (existing ? (existing.voted ? ' voted' : ' listed') : '');
+      btn.textContent = it.name;
+      btn.title = existing
+        ? (existing.voted ? `Your vote is in (${existing.votes})` : `Already listed — click to vote (${existing.votes})`)
+        : 'Add to suggestions & vote';
+
+      if (interactive) {
+        btn.addEventListener('click', async () => {
+          if (existing) {
+            await vote(existing.id);
+          } else {
+            snackError.textContent = '';
+            try {
+              const res = await fetch('api/suggest.php', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ code, text: it.name })
+              });
+              const data = await res.json();
+              if (data.error) { snackError.textContent = data.error; return; }
+              poll();
+            } catch { snackError.textContent = 'Could not add'; }
+          }
+        });
+      } else {
+        btn.disabled = true;
+      }
+
+      snackQuickPicks.appendChild(btn);
+    });
+  }
+
   // === Render: snacks ===
-  function renderSnacks(suggestions, interactive) {
+  function renderSnacks(suggestions, cupboard, interactive) {
+    renderQuickPicks(cupboard, suggestions, interactive);
     snacksList.innerHTML = '';
     if (!suggestions || suggestions.length === 0) {
       const empty = document.createElement('div');
@@ -665,7 +711,7 @@
     setPhase(state.state);
 
     // === Snacks (always visible, voting always live) ===
-    renderSnacks(state.suggestions, true);
+    renderSnacks(state.suggestions, state.cupboard, true);
     snacksCount.textContent = state.suggestions ? state.suggestions.length : 0;
 
     // === Cupboard + give-card ===
