@@ -20,13 +20,16 @@
   const snackQuickWrap  = $('snack-quick-wrap');
   const snackQuickPicks = $('snack-quick-picks');
 
-  const cupboardForm    = $('cupboard-form');
-  const cupboardName    = $('cupboard-name');
-  const cupboardStock   = $('cupboard-stock');
-  const cupboardList    = $('cupboard-list');
-  const cupboardCount   = $('cupboard-count');
-  const cupboardHint    = $('cupboard-hint');
-  const cupboardError   = $('cupboard-error');
+  const cupboardForm      = $('cupboard-form');
+  const cupboardName      = $('cupboard-name');
+  const cupboardStock     = $('cupboard-stock');
+  const cupboardList      = $('cupboard-list');
+  const cupboardCount     = $('cupboard-count');
+  const cupboardHint      = $('cupboard-hint');
+  const cupboardError     = $('cupboard-error');
+  const cupboardTrigger   = $('cupboard-trigger');
+  const cupboardModal     = $('cupboard-modal');
+  const cupboardModalCard = $('cupboard-modal-card');
 
   const giveCard        = $('give-card');
   const giveStatus      = $('give-status');
@@ -167,6 +170,14 @@
     document.body.appendChild(t);
     setTimeout(() => t.remove(), 2000);
   }
+
+  // === Cupboard modal ===
+  cupboardTrigger.addEventListener('click', () => {
+    cupboardModal.hidden = false;
+  });
+  cupboardModal.addEventListener('click', (e) => {
+    if (!cupboardModalCard.contains(e.target)) cupboardModal.hidden = true;
+  });
 
   // === Share code ===
   shareCode.addEventListener('click', () => {

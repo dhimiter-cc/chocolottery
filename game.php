@@ -46,27 +46,14 @@ $presetName = get_cookie('player_name') ?? '';
 
   <div class="game-grid">
 
-    <!-- Cupboard: real-world snack stock -->
-    <section class="panel cupboard-panel">
-      <div class="section-head">
-        <h2>🍫 The cupboard</h2>
-        <span class="count" id="cupboard-count">0</span>
-      </div>
-      <p class="muted" id="cupboard-hint">What's actually on the shelf. Host: set stock before starting.</p>
-      <form id="cupboard-form" class="cupboard-form" hidden>
-        <input type="text" id="cupboard-name" maxlength="60" placeholder="e.g. KitKat" autocomplete="off">
-        <input type="text" id="cupboard-stock" inputmode="numeric" maxlength="3" placeholder="qty" value="1">
-        <button type="submit" class="btn">Add</button>
-      </form>
-      <div id="cupboard-list" class="cupboard-list"></div>
-      <p id="cupboard-error" class="error"></p>
-    </section>
-
     <!-- Snacks: left column on desktop -->
     <section class="panel snacks-panel">
       <div class="section-head">
         <h2>Snack votes</h2>
-        <span class="count" id="snacks-count">0</span>
+        <div class="section-head-right">
+          <button type="button" id="cupboard-trigger" class="cupboard-trigger-btn">🍫 Cupboard</button>
+          <span class="count" id="snacks-count">0</span>
+        </div>
       </div>
       <p class="muted">Pitch ideas. Upvote favourites. Highest-voted wins. Tie or no votes? Random. (Dwight, no beets.)</p>
       <div id="snack-quick-wrap" hidden>
@@ -145,6 +132,24 @@ $presetName = get_cookie('player_name') ?? '';
       <p id="action-error" class="error" style="margin: 10px 0 0;"></p>
     </section>
 
+  </div>
+</div>
+
+<!-- Cupboard modal -->
+<div id="cupboard-modal" class="modal" hidden>
+  <div class="modal-card cupboard-modal-card" id="cupboard-modal-card">
+    <div class="section-head" style="margin-bottom:12px;">
+      <h2>🍫 The cupboard</h2>
+      <span class="count" id="cupboard-count">0</span>
+    </div>
+    <p class="muted" id="cupboard-hint">What's actually on the shelf. Host: set stock before starting.</p>
+    <form id="cupboard-form" class="cupboard-form" hidden>
+      <input type="text" id="cupboard-name" maxlength="60" placeholder="e.g. KitKat" autocomplete="off">
+      <input type="text" id="cupboard-stock" inputmode="numeric" maxlength="3" placeholder="qty" value="1">
+      <button type="submit" class="btn">Add</button>
+    </form>
+    <div id="cupboard-list" class="cupboard-list"></div>
+    <p id="cupboard-error" class="error"></p>
   </div>
 </div>
 
