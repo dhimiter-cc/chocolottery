@@ -14,7 +14,10 @@
       <h1 class="title">chocolate.lottery</h1>
       <p class="tagline">One chocolate. Many victims. Pick the longest straw. Don't make it weird.</p>
     </div>
-    <a href="leaderboard.php" class="btn btn-ghost">Leaderboard →</a>
+    <div class="head-actions">
+      <button type="button" id="fairness-btn" class="btn btn-ghost">⚖️ Fairness</button>
+      <a href="leaderboard.php" class="btn btn-ghost">Leaderboard →</a>
+    </div>
   </header>
 
   <main class="landing-grid">
@@ -45,6 +48,19 @@
   </footer>
 </div>
 
+<!-- Fairness Check modal -->
+<div id="fairness-modal" class="modal" hidden>
+  <div class="modal-card fairness-modal-card">
+    <div class="section-head" style="margin-bottom:16px;">
+      <h2>⚖️ Fairness Check</h2>
+      <button type="button" id="fairness-close" class="btn btn-ghost" style="padding:4px 10px;">✕</button>
+    </div>
+    <p class="muted">Actual wins vs. statistically expected wins — based on how many players were in each game.</p>
+    <div id="fairness-body" style="margin-top:16px;"><p class="muted center">Loading…</p></div>
+    <p id="fairness-note" class="muted" style="font-size:0.8rem;margin-top:14px;"></p>
+  </div>
+</div>
+
 <script>
 document.getElementById('create-btn').addEventListener('click', async () => {
   try {
@@ -71,6 +87,67 @@ document.getElementById('join-form').addEventListener('submit', async (e) => {
     window.location = 'game.php?code=' + encodeURIComponent(data.code);
   } catch { err.textContent = 'Join failed'; }
 });
+
+(function () {
+  const modal   = document.getElementById('fairness-modal');
+  const body    = document.getElementById('fairness-body');
+  const note    = document.getElementById('fairness-note');
+  let loaded    = false;
+
+  async function openFairness() {
+    modal.removeAttribute('hidden');
+    if (loaded) return;
+    body.innerHTML = '<p class="muted center">Loading…</p>';
+    try {
+      const res  = await fetch('api/fairness.php');
+      const data = await res.json();
+      loaded = true;
+      renderFairness(data);
+    } catch {
+      body.innerHTML = '<p class="error center">Could not load fairness data.</p>';
+    }
+  }
+
+  function renderFairness(data) {
+    if (!data.players || data.players.length === 0) {
+      body.innerHTML = '<p class="muted center">No games played yet — nothing to check!</p>';
+      return;
+    }
+    const rows = data.players.map(p => {
+      const expected = p.expected_wins !== null ? p.expected_wins.toFixed(1) : '—';
+      const score    = p.luck_score    !== null ? p.luck_score.toFixed(2)    : '—';
+      const verdict  = p.verdict
+        ? `<span class="fairness-verdict fairness-${p.verdict.class}">${p.verdict.emoji} ${p.verdict.label}</span>`
+        : '<span class="fairness-verdict fairness-none">—</span>';
+      return `<tr>
+        <td>${p.name}</td>
+        <td class="tc">${p.actual_wins}</td>
+        <td class="tc">${expected}</td>
+        <td class="tc">${score}</td>
+        <td>${verdict}</td>
+      </tr>`;
+    }).join('');
+    body.innerHTML = `
+      <table class="leaderboard fairness-table">
+        <thead><tr>
+          <th>Name</th>
+          <th>Wins<span class="th-sub">times you've won</span></th>
+          <th>Expected<span class="th-sub">wins chance predicts, based on how many players were in each game you played</span></th>
+          <th>Luck score<span class="th-sub">your wins ÷ expected — 1.0 means perfectly average</span></th>
+          <th>Verdict<span class="th-sub">our completely unbiased assessment</span></th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+    const diff = data.total_games - data.tracked_games;
+    note.textContent = diff > 0
+      ? `${diff} game${diff > 1 ? 's' : ''} predate participant tracking and are excluded from expected win calculations.`
+      : '';
+  }
+
+  document.getElementById('fairness-btn').addEventListener('click', openFairness);
+  document.getElementById('fairness-close').addEventListener('click', () => modal.setAttribute('hidden', ''));
+  modal.addEventListener('click', e => { if (e.target === modal) modal.setAttribute('hidden', ''); });
+})();
 </script>
 </body>
 </html>

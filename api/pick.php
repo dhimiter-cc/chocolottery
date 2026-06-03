@@ -48,12 +48,17 @@ $result = with_game_lock($code, function ($game) use ($token, $strawIndex, &$win
         $game['prize_snack'] = pick_prize_snack($game);
 
         if ($winnerToken) {
+            $playerNames = [];
+            foreach ($game['players'] as $p) {
+                $playerNames[] = $p['name'];
+            }
             $winRecord = [
                 'name' => $game['players'][$winnerToken]['name'],
                 'game_code' => $game['code'],
                 'timestamp' => time(),
                 'month' => date('Y-m'),
                 'participants' => count($game['players']),
+                'player_names' => $playerNames,
                 'prize_snack' => $game['prize_snack']['text'] ?? null,
             ];
         }

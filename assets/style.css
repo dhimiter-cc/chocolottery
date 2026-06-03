@@ -278,7 +278,7 @@ input[type=text]::placeholder { color: var(--text-dim); }
   grid-template-columns: 1fr;
   gap: 16px;
 }
-@media (min-width: 880px) {
+@media (min-width: 1100px) {
   .game-room  { height: calc(100vh - 64px); } /* definite height so the grid row can resolve */
   .game-grid {
     flex: 1;
@@ -299,7 +299,7 @@ input[type=text]::placeholder { color: var(--text-dim); }
   flex-direction: column;
   min-height: 360px;
 }
-@media (min-width: 880px) {
+@media (min-width: 1100px) {
   .chat-panel { min-height: 0; max-height: none; height: 100%; }
 }
 .chat-log {
@@ -314,7 +314,7 @@ input[type=text]::placeholder { color: var(--text-dim); }
   border-bottom: 1px dashed var(--border);
   min-height: 200px; /* keeps space on mobile */
 }
-@media (min-width: 880px) {
+@media (min-width: 1100px) {
   .chat-log { min-height: 0; } /* on desktop let flex+overflow do the work */
 }
 .chat-msg {
@@ -1248,6 +1248,42 @@ input[type=text]::placeholder { color: var(--text-dim); }
 .rank { font-family: var(--font-mono); width: 60px; color: var(--text-dim); font-weight: 600; }
 .leaderboard tr.top-rank .rank { color: var(--accent-deep); }
 
+/* === Fairness Check === */
+.fairness-modal-card {
+  width: min(680px, 92vw);
+  max-height: 85vh;
+  overflow-y: auto;
+}
+
+.fairness-table { margin-top: 4px; }
+.fairness-table th { vertical-align: top; }
+.th-sub {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-dim);
+  margin-top: 3px;
+  line-height: 1.35;
+  white-space: normal;
+}
+.fairness-table td { font-size: 0.9rem; }
+.fairness-table .tc { text-align: center; }
+
+.fairness-verdict {
+  display: inline-block;
+  font-size: 0.8rem;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+.fairness-lucky   { background: rgba(232,152,23,0.15); color: var(--accent-deep); }
+.fairness-fair    { background: rgba(15,157,110,0.12);  color: var(--green); }
+.fairness-unlucky { background: rgba(99,102,241,0.12);  color: var(--indigo); }
+.fairness-none    { color: var(--text-dim); }
+
 /* Toast */
 .toast {
   position: fixed;
@@ -1421,4 +1457,108 @@ input[type=text]::placeholder { color: var(--text-dim); }
   margin-top: 16px;
   flex-wrap: wrap;
   gap: 12px;
+}
+
+/* === Mobile layout (< 880px) === */
+@media (max-width: 1099px) {
+  /* Stage always first in the stacked single-column layout */
+  .stage-panel { order: -1; }
+
+  /* Lift chat panel out of the grid and park it off-screen below the fold */
+  .chat-panel:not([hidden]) {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 65vh;
+    max-height: 65vh;
+    min-height: 0;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    border-bottom: none;
+    transform: translateY(110%);
+    transition: transform 0.35s cubic-bezier(.32, 1, .5, 1);
+    z-index: 90;
+  }
+  .chat-panel.drawer-open {
+    transform: translateY(0);
+  }
+
+  /* Backdrop behind the drawer */
+  .chat-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: rgba(40, 28, 12, 0.4);
+    backdrop-filter: blur(3px);
+    z-index: 89;
+    animation: fade-in 0.2s ease-out;
+  }
+
+  /* Close button — visible inside the drawer only on mobile */
+  .chat-drawer-close {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    padding: 3px 8px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-mute);
+    cursor: pointer;
+    line-height: 1;
+    transition: background 0.15s, color 0.15s;
+  }
+  .chat-drawer-close:hover { background: var(--bg-soft); color: var(--text); }
+
+  /* Chat FAB — only shown on mobile when in-game (hidden attr removed by JS) */
+  .chat-fab:not([hidden]) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: linear-gradient(180deg, var(--accent) 0%, var(--accent-deep) 100%);
+    border: none;
+    box-shadow: 0 4px 18px rgba(232, 152, 23, 0.55);
+    cursor: pointer;
+    font-size: 1.35rem;
+    z-index: 88;
+    transition: transform 0.15s, box-shadow 0.15s;
+  }
+  .chat-fab:not([hidden]):hover {
+    transform: scale(1.08);
+    box-shadow: 0 6px 24px rgba(232, 152, 23, 0.7);
+  }
+}
+
+/* Backdrop hidden state (works across breakpoints) */
+.chat-backdrop[hidden] { display: none !important; }
+
+/* Close button hidden on desktop */
+.chat-drawer-close { display: none; }
+
+/* FAB hidden by default (desktop + before in-game) */
+.chat-fab { display: none; }
+
+/* Unread dot on FAB */
+.chat-fab-dot {
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: var(--red);
+  border: 2px solid var(--accent-deep);
+  animation: bip 1.2s ease-in-out infinite;
+}
+.chat-fab-dot[hidden] { display: none; }
+@keyframes bip {
+  0%, 100% { transform: scale(1);    opacity: 1; }
+  50%       { transform: scale(1.45); opacity: 0.75; }
 }

@@ -62,6 +62,8 @@
   const chatInput  = $('chat-input');
   const chatCount  = $('chat-count');
   const chatError  = $('chat-error');
+  const chatFab    = $('chat-fab');
+  const chatFabDot = $('chat-fab-dot');
 
   const shareCode  = $('share-code');
   const nameModal  = $('name-modal');
@@ -78,6 +80,7 @@
   let prevLobbyTokens = new Set();
   let lastChatId = null;
   let chatPinnedToBottom = true;
+  let chatDrawerOpen = false;
   let restartConfirmTimer = null;
 
   // === Avatar helpers ===
@@ -491,6 +494,26 @@
     } catch { giveError.textContent = 'Could not undo'; }
   });
 
+  // === Mobile chat drawer ===
+  function openChatDrawer() {
+    chatDrawerOpen = true;
+    chatPanel.classList.add('drawer-open');
+    $('chat-backdrop').hidden = false;
+    chatFabDot.hidden = true;
+    chatPinnedToBottom = true;
+    chatLog.scrollTop = chatLog.scrollHeight;
+  }
+  function closeChatDrawer() {
+    chatDrawerOpen = false;
+    chatPanel.classList.remove('drawer-open');
+    $('chat-backdrop').hidden = true;
+  }
+  if (chatFab) {
+    chatFab.addEventListener('click', () => chatDrawerOpen ? closeChatDrawer() : openChatDrawer());
+    $('chat-backdrop').addEventListener('click', closeChatDrawer);
+    $('chat-drawer-close').addEventListener('click', closeChatDrawer);
+  }
+
   // === Chat ===
   chatLog.addEventListener('scroll', () => {
     const nearBottom = chatLog.scrollHeight - chatLog.scrollTop - chatLog.clientHeight < 40;
@@ -519,14 +542,17 @@
   function renderChat(state) {
     const inGame = !!state.in_game;
     chatPanel.hidden = !inGame;
-    if (!inGame) return;
+    if (chatFab) chatFab.hidden = !inGame;
+    if (!inGame) { closeChatDrawer(); return; }
 
     const messages = state.chat || [];
     chatCount.textContent = messages.length;
 
     const latestId = messages.length ? messages[messages.length - 1].id : null;
     if (latestId === lastChatId) return; // no new messages
+    const hadMessages = lastChatId !== null; // true = genuinely new, not initial load
     lastChatId = latestId;
+    if (hadMessages && chatFabDot && !chatDrawerOpen) chatFabDot.hidden = false;
 
     chatLog.innerHTML = '';
     if (messages.length === 0) {
