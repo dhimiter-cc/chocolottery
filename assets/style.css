@@ -1157,6 +1157,26 @@ input[type=text]::placeholder { color: var(--text-dim); }
 .cup-stage.countdown .straws,
 .cup-stage.countdown .cup { opacity: 0.35; transition: opacity 0.3s; }
 
+/* === Excluded-from-round banner === */
+.excluded-banner {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: .6rem;
+  padding: 2rem;
+  background: rgba(10, 8, 20, 0.82);
+  backdrop-filter: blur(6px);
+  border-radius: inherit;
+  text-align: center;
+  animation: fade-in .35s ease;
+}
+.excluded-icon  { font-size: 2.8rem; line-height: 1; }
+.excluded-title { font-size: 1.15rem; font-weight: 700; color: #f4a261; }
+.excluded-body  { font-size: .85rem; color: #9090b0; max-width: 28rem; line-height: 1.6; }
+
 /* === Reveal build-up: stage charging glow === */
 .cup-stage.charging::after {
   content: '';

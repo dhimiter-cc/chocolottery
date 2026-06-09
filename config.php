@@ -5,7 +5,7 @@ define('DATA_DIR', __DIR__ . '/data');
 define('GAMES_DIR', DATA_DIR . '/games');
 define('LEADERBOARD_FILE', DATA_DIR . '/leaderboard.json');
 define('CUPBOARD_FILE', DATA_DIR . '/cupboard.json');
-define('ONLINE_THRESHOLD', 15);          // seconds
+define('ONLINE_THRESHOLD', 30);          // seconds — must cover mobile background-tab timer throttling
 define('GAME_TTL', 86400);               // 24h
 define('COOKIE_TTL', 86400);             // 24h
 

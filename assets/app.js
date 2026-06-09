@@ -858,6 +858,27 @@
       }
 
     } else if (state.state === 'picking') {
+      // Player was online when they joined but got dropped before the host clicked Start
+      // (mobile background-tab timer throttling is the usual culprit).
+      if (!state.in_game) {
+        strawsEl.innerHTML = '';
+        actionBtn.style.display = 'none';
+        prizeCard.hidden = true;
+        phaseDetail.textContent = '';
+        let banner = cupStage.querySelector('.excluded-banner');
+        if (!banner) {
+          banner = document.createElement('div');
+          banner.className = 'excluded-banner';
+          banner.innerHTML = `
+            <div class="excluded-icon">😬</div>
+            <div class="excluded-title">You missed this round</div>
+            <div class="excluded-body">The game started while your connection appeared offline — likely because the tab was in the background on your phone. You'll be back in for the next one.</div>`;
+          cupStage.appendChild(banner);
+        }
+        return;
+      }
+
+      cupStage.querySelector('.excluded-banner')?.remove();
       renderStraws(state);
 
       const total = state.players.length;
