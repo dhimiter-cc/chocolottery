@@ -135,7 +135,7 @@ $presetName = get_cookie('player_name') ?? '';
       </div>
 
       <p id="action-error" class="error" style="margin: 10px 0 0;"></p>
-      <button id="restart-btn" class="btn btn-danger restart-btn" hidden>↺ Restart game</button>
+      <button id="restart-btn" class="restart-btn" hidden>↺ restart game</button>
     </section>
 
   </div>

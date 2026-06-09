@@ -908,8 +908,8 @@
       }
     }
 
-    // === Restart button (host only, non-lobby) ===
-    const showRestart = !!(state.is_host && state.state !== 'lobby');
+    // === Restart button (host only, in-game, non-lobby) ===
+    const showRestart = !!(state.is_host && state.in_game && state.my_token && state.my_token === state.creator_token && state.state !== 'lobby');
     restartBtn.hidden = !showRestart;
     if (!showRestart && restartConfirmTimer) {
       clearTimeout(restartConfirmTimer);

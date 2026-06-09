@@ -189,7 +189,21 @@ h2 {
   from { box-shadow: 0 0 0 0 rgba(220,42,42,0.5); }
   to   { box-shadow: 0 0 0 7px rgba(220,42,42,0); }
 }
-.restart-btn { margin-top: 10px; display: block; width: 100%; }
+.restart-btn {
+  display: block;
+  margin-top: 14px;
+  margin-left: auto;
+  background: none;
+  border: none;
+  padding: 4px 2px;
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  cursor: pointer;
+  text-decoration: underline dotted var(--border);
+  font-family: var(--font-sans);
+  transition: color 0.15s;
+}
+.restart-btn:hover { color: var(--red); text-decoration-color: var(--red); }
 
 /* === Forms === */
 form label {
